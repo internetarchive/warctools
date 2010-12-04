@@ -1,4 +1,8 @@
+"""a skeleton class for archive records"""
+
+
 def add_headers(**kwargs):
+    """a useful helper for defining header names in record formats"""
     def _add_headers(cls):
         for k,v in kwargs.iteritems():
             setattr(cls,k,v)
@@ -10,6 +14,9 @@ def add_headers(**kwargs):
 
 @add_headers(DATE='Date', CONTENT_TYPE='Type', CONTENT_LENGTH='Length')
 class ArchiveRecord(object):
+    """An archive record has some headers, maybe some content and
+    a list of errors encountered. record.headers is a list of tuples (name,
+    value). errors is a list, and content is a tuple of (type, data)"""
     def __init__(self,  headers=None, content=None, errors=None):
         self.headers = headers if headers else []
         self.content = content if content else (None, "")
@@ -58,22 +65,6 @@ class ArchiveRecord(object):
 
 
 
-
-@add_headers(
-    URL='URL',
-    IP='IP-address',
-    DATE='Archive-date',
-    CONTENT_TYPE = 'Content-type',
-    CONTENT_LENGTH = 'Archive-length',
-)
-class ArcRecord(ArchiveRecord):
-    def __init__(self, version=None, headers=None, content=None, errors=None):
-        AbstractRecord.__init__(self,headers,content,errors) 
-        self.version = version
-
-    @property
-    def url(self):
-        return self.headers[self.TYPE]
 
 
 

@@ -5,7 +5,7 @@ import re
 from warctools.record import ArchiveRecord
 from warctools.stream import open_record_stream
 
-bad_lines = 5
+bad_lines = 5 # when to give up looking for the version stamp
 
 @ArchiveRecord.HEADERS(
     DATE='WARC-Date',
