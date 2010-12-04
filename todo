@@ -12,7 +12,7 @@ support:
 
 provide:
     arc to warc conversion
-    human readable dump of warc files
+  *  human readable dump of warc files
     validator 
         pass/fail for a warc file
         print out all valid records
@@ -24,20 +24,45 @@ provide:
         change these warcs this way
 
 
+done:
+
+    record skeleton
+    warc parsing
+    gzip'd record format reading
+    uncompressed reading
+    newline ambivilence
+    error logging
+
+todo:
+    warc file writing, printing
+    arc file reading, printing
+    warc file index creation
+    arc to warc file conversion
+    writing to compressed record streams
+
+    arc2warc 
+    warc2cdx  - cdx index files ala ia
+    warcdump - human readable summary
+    warcfilter - filter on id, mimetype or url (date)?
+    warcvalidator - either return 0 or 1 for a valid archive,
+                    print out recovered archive
+    
+
+
 rough idea:
 
     warc stream access: 
         allow setting codec
-        reading gz or normal file
-        read record at a time along with offset information
+   *     reading gz or normal file
+   *     read record at a time along with offset information
         append
         create index
 
 
         
     warcrecord:
-        dump
-        access headers/bits
+   *     dump
+    *    access headers/bits
         validator (check iso constraints)
 
     note: record does not know where it came from, it is just a struct
