@@ -1,0 +1,96 @@
+hanzo warc tools
+
+open source tool for a proprietary standard :)
+
+
+support:
+    warc files as per iso spec
+    arc files as per ia spec
+
+    both compressed and uncompressed
+    indexed and unindexed
+
+provide:
+    arc to warc conversion
+    human readable dump of warc files
+    validator 
+        pass/fail for a warc file
+        print out all valid records
+        print out all junk records
+
+    grep like program
+        print warcs by some thing
+    sed like program *possible*
+        change these warcs this way
+
+
+rough idea:
+
+    warc stream access: 
+        allow setting codec
+        reading gz or normal file
+        read record at a time along with offset information
+        append
+        create index
+
+
+        
+    warcrecord:
+        dump
+        access headers/bits
+        validator (check iso constraints)
+
+    note: record does not know where it came from, it is just a struct
+    
+
+    arc stream access (same)
+
+    arc record
+        access headers/bits
+        dump
+        no validator, effort.
+
+
+code:
+    error handler passed in (default, whine, can throw execption to stop)
+
+    sort headers on dump rather than archive order
+
+
+
+class record(object):
+        def date()
+        def headers(): -> [(name,val),...]
+            pass
+        def payload() -> (type, buf)
+        def dump(dest=stringio,sort_headers) -> dest
+        def write_to(...)
+
+def warcrecord(record)
+    def version()
+    def type -> warc type
+    def id()
+    def content()
+    def mime()
+    def validate() 
+
+    provide class methods for factories for standard types
+
+def stream(object):
+    def __init__(stringio)
+    def __iter__(self):
+        ...
+    def index() -> stringio
+    def append()
+
+def indexedstream(stream):
+    
+
+
+
+def arcrecord(record)
+    url, ip, date, content-type, length, payload
+    def url()
+    def ip()
+    def to_warc_records(dest=stringio) -> stringio
+    
