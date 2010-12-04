@@ -33,8 +33,10 @@ class ArchiveRecord(object):
             print '\t',self.CONTENT_TYPE,': ',content_type
             print '\t',self.CONTENT_LENGTH,': ',len(content_body)
             print 'Content:'
-            for line in content_body.split('\n'):
+            for _,line in zip(range(20),content_body.split('\n')):
                 print '\t', line
+            print '\t...'
+            print 
         else:
             print 'Content: none'
             print

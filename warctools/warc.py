@@ -108,8 +108,9 @@ def parse(stream):
         
         #Read headers
         line = stream.readline()
-        while not nl_rx.match(line):       
+        while line and not nl_rx.match(line):       
           
+            #print 'header', line
             match = header_rx.match(line)
             if match:
                 name = match.group('name').strip()
@@ -146,12 +147,17 @@ def parse(stream):
         if content_length:
             content=[]
             length = 0
-            line = stream.readline()
-            while line and length <= content_length:
+            while length <= content_length:
+                line = stream.readline()
+                if not line:
+                       # print 'no more data' 
+                        break
                 content.append(line)
                 length+=len(line)
-                line = stream.readline()
             content="".join(content)
+            content, line = content[0:content_length], content[content_length+1:]
+            if len(content)!= content_length:
+                record.error('content length mismatch (is, claims)', len(content), content_length)
             record.content = (content_type, content)
         else:   
             record.error('missing header', WarcRecord.CONTENT_LENGTH)

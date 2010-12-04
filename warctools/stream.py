@@ -17,6 +17,7 @@ class RecordStream(object):
         nrecords = 0
         while nrecords < limit or limit is None:
             offset, record, errors = self._read_record()
+            nrecords+=1
             yield (offset, record,errors)
             if not record: 
                 break
@@ -43,19 +44,20 @@ class RecordStream(object):
 class GzipRecordStream(RecordStream):
     def __init__(self, file_handle, record):
         RecordStream.__init__(self,file_handle, record)
-        self.gz = GzipRecordFile(self.fh)
     def _read_record(self):
         offset = self.fh.tell()
-        record, errors= self.record.parse(self.gz)
-        if not self.gz.done:
+        gz = GzipRecordFile(self.fh)
+        record, errors= self.record.parse(gz)
+        if not gz.done:
             nlines = 0
-            while self.gz.readline():
+            while gz.readline():
                 nlines+=1
-            e = ("trailing data in gzipped record, try 'file' mode, at gzip archive offset", offset," lines ignored", nlines)
-            if record:
-                record.error(*e)
-            else:
-                errors.append(e)
+            if nlines:
+                e = ("trailing data in gzipped record, try 'file' mode, at gzip archive offset", offset," lines ignored", nlines)
+                if record:
+                    record.error(*e)
+                else:
+                    errors.append(e)
                 
         return offset, record, errors
 
@@ -85,7 +87,7 @@ def open_record_stream(record, filename=None, file_handle=None, mode="rb+", gzip
     
 
 CHUNK_SIZE=1024
-line_rx=re.compile('(\r\n|\r|\n)')
+line_rx=re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',re.DOTALL)
 
 class GzipRecordFile(object):
     def __init__(self, fh):
@@ -98,33 +100,29 @@ class GzipRecordFile(object):
     def _getline(self):
             if self.buffer:
                 #a,nl,b
-                split=line_rx.split(self.buffer, maxsplit=1)
+                match=line_rx.match(self.buffer)
+                #print match
                # print 'split:', split[0],split[1], len(split[2])
-                if len(split) > 1:
-                    
-                    output = split[0]+split[1]
-                    if len(split) == 3:
-                        self.buffer = split[2]
-                    else:       
-                        self.buffer = ""
+                if match: 
+                    output = match.group('line')
+                    self.buffer = ""+match.group('tail')
                     return output
                 elif self.done:
-                #    print 'done, can"t split'
                     output = self.buffer
                     self.buffer = ""
+                    
                     return output
         
     def readline(self):
         while True:
             output = self._getline()
             if output:
-            #        print 'line',output[0:20],'...line'
                     return output
 
             if self.done:
                 return ""
             
-            #print 'read chunk at', self.fh.tell()
+            #print 'read chunk at', self.fh.tell(), self.done
             chunk = self.fh.read(CHUNK_SIZE)
             out = self.z.decompress(chunk)
             if out: self.buffer+=out
@@ -137,6 +135,7 @@ class GzipRecordFile(object):
             if not chunk:
                 self.done = True
                 continue
+            
                 
     
             
