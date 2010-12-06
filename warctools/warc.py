@@ -1,9 +1,8 @@
-"""An object to represent warc records"""
+"""An object to represent warc records, using the abstract record in record.py"""
 
 import re
 
 from warctools.record import ArchiveRecord
-from warctools.stream import open_record_stream
 
 bad_lines = 5 # when to give up looking for the version stamp
 
@@ -27,11 +26,16 @@ class WarcRecord(ArchiveRecord):
     def id(self):
         return self.headers[self.ID]
 
-    @property
-    def content_type(self):
-        return self.headers[self.CONTENT_TYPE]
-
     def _write_to(self, out, nl):  
+        """WARC Format:
+            VERSION NL
+            (Key: Value NL)* 
+            NL
+            CONTENT NL
+            NL
+            
+            don't write multi line headers
+        """
         out.write(self.version)
         out.write(nl)
         for k,v in self.headers:
@@ -46,20 +50,18 @@ class WarcRecord(ArchiveRecord):
             out.write(content_type)
             out.write(nl)
         if buffer:
-            content_length = len(buffer)
+            content_length = str(len(buffer))
             out.write(self.CONTENT_LENGTH)
             out.write(": ")
             out.write(content_length)
             out.write(nl)
+
+        # end of header blank nl
         out.write(nl)
         if buffer:
             out.write(buffer)
         out.write(nl)
         out.write(nl)
-
-    @classmethod
-    def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip=None): 
-        return open_record_stream(cls, filename, file_handle, mode, gzip)
 
     def repair(self):
         pass
@@ -80,6 +82,9 @@ type_rx = rx('^'+WarcRecord.CONTENT_TYPE+'$')
 
 
 def parse(stream):
+    """Reads a warc record from the stream, returns a tuple (record, errors). 
+    Either records is null or errors is null. Any record-specific errors are 
+    contained in the record - errors is only used when *nothing* could be parsed"""
     errors = []
     # find WARC/.*
     while True:   

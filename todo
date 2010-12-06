@@ -40,6 +40,8 @@ todo:
     arc to warc file conversion
     writing to compressed record streams
 
+frontend todo:
+    warc2warc
     arc2warc 
     warc2cdx  - cdx index files ala ia
     warcdump - human readable summary

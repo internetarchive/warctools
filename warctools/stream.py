@@ -4,6 +4,8 @@ import zlib
 import gzip
 import re
 
+from warctools.log import debug
+
 class RecordStream(object):
     """A readable/writable stream of Archive Records. Can be iterated over
     or read_records can give more control, and potentially offset information"""
@@ -31,9 +33,11 @@ class RecordStream(object):
 
     def __iter__(self):
         while True:
-            record, errors = self._read_record()
+            offset, record, errors = self._read_record()
             if record:
                 yield record
+            elif errors:
+                raise errors
             else:
                 break
             
@@ -48,6 +52,9 @@ class RecordStream(object):
 
     def write(self, record):
         record.write_to(self)
+
+    def close(self):
+        self.fh.close()
 
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped archive records"""
@@ -80,7 +87,7 @@ class GzipFileStream(RecordStream):
         return None, record, errors
 
 
-def open_record_stream(record, filename=None, file_handle=None, mode="rb+", gzip=None):
+def open_record_stream(record, filename=None, file_handle=None, mode="rb+", gzip="auto"):
         """Can take a filename or a file_handle. Normally called indirectly from
         A record class i.e WarcRecord.open_archive"""
 
@@ -89,6 +96,17 @@ def open_record_stream(record, filename=None, file_handle=None, mode="rb+", gzip
         else:
             if not filename:
                 filename = file_handle.name
+        if gzip == 'auto':
+            signature = file_handle.read(2)
+            file_handle.seek(-2,1)
+            if signature == '\x1f\x8b':
+                gzip = 'record'
+                debug('autodetect: record gzip')
+            else:
+                # assume uncompressed file
+                debug('autodetected: uncompressed file')
+                gzip = None
+                    
 
         if gzip=='record':
             return GzipRecordStream(file_handle, record)

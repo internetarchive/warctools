@@ -1,5 +1,7 @@
 """a skeleton class for archive records"""
 
+from warctools.stream import open_record_stream
+
 
 def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
@@ -60,8 +62,18 @@ class ArchiveRecord(object):
     def _write_to(self, out, newline):  
         raise AssertionError, 'this is bad'
 
+    @classmethod
+    def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip="auto"): 
+        return open_record_stream(cls, filename, file_handle, mode, gzip)
+
+
     HEADERS=staticmethod(add_headers)
     
+
+    def parse(self, stream):
+        """Reads a warc record from the stream, returns a tuple (record, errors). 
+        Either records is null or errors is null. Any record-specific errors are 
+        contained in the record - errors is only used when *nothing* could be parsed"""
 
 
 

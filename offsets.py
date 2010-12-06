@@ -8,7 +8,7 @@ gz='/work/hanzo-warc-tools/hooray.gz'
 '/Users/tef/Downloads/IAH-20080430204825-00000-blackbook.warc.gz'
 gz=sys.argv[1]
 
-fh = WarcRecord.open_archive(gz, gzip=sys.argv[2])
+fh = WarcRecord.open_archive(gz, gzip=("auto" if len(sys.argv) >= 2 else sys.argv[2]))
 
 for (offset, record, errors) in fh.read_records(limit=10):
     if record:
