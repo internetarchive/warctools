@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from warctools import WarcRecord
+from warctools import ArchiveRecord
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 
@@ -27,11 +27,11 @@ def main(argv):
         parser.error("no imput warc file(s)")
         
     for name in input_files:
-        fh = WarcRecord.open_archive(name, gzip="auto")
+        fh = ArchiveRecord.open_archive(name, gzip="auto")
 
         for (offset, record, errors) in fh.read_records(limit=None):
             if record:
-                print "warc record at %s:%d"%(name,offset)
+                print "archive record at %s:%d"%(name,offset)
                 record.dump(content=True)
             elif errors:
                 print "warc errors at %s:%d"%(name, offset)

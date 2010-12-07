@@ -3,6 +3,7 @@
 import re
 
 from warctools.record import ArchiveRecord
+from warctools.archive_detect import register_record_type
 
 bad_lines = 5 # when to give up looking for the version stamp
 
@@ -69,6 +70,10 @@ class WarcRecord(ArchiveRecord):
     def validate(self):
         return self.errors
 
+    @classmethod
+    def make_parser(self):
+        return WarcParser()
+
 def rx(pat):
     return re.compile(pat,flags=re.IGNORECASE)
 
@@ -81,119 +86,120 @@ length_rx = rx('^'+WarcRecord.CONTENT_LENGTH+'$')
 type_rx = rx('^'+WarcRecord.CONTENT_TYPE+'$')
 
 
-def parse(stream):
-    """Reads a warc record from the stream, returns a tuple (record, errors). 
-    Either records is null or errors is null. Any record-specific errors are 
-    contained in the record - errors is only used when *nothing* could be parsed"""
-    errors = []
-    # find WARC/.*
-    while True:   
-        line = stream.readline()
-        match = version_rx.match(line)
+class WarcParser(object):
+    @staticmethod
+    def parse(stream):
+        """Reads a warc record from the stream, returns a tuple (record, errors). 
+        Either records is null or errors is null. Any record-specific errors are 
+        contained in the record - errors is only used when *nothing* could be parsed"""
+        errors = []
+        # find WARC/.*
+        while True:   
+            line = stream.readline()
+            match = version_rx.match(line)
 
-        if match or not line:
-            break
-        elif not nl_rx.match(line):
-            errors.append(('ignored line', line)) 
-            if len(errors) > bad_lines:
-                raise ValueError, errors  
-        
-    if line:
-        content_length = 0
-        content_type = None
+            if match or not line:
+                break
+            elif not nl_rx.match(line):
+                errors.append(('ignored line', line)) 
+                if len(errors) > bad_lines:
+                    raise ValueError, errors  
+            
+        if line:
+            content_length = 0
+            content_type = None
 
-        record = WarcRecord(errors=errors)
+            record = WarcRecord(errors=errors)
 
-        record.version = match.group('version').strip()
+            record.version = match.group('version').strip()
 
-        prefix = match.group('prefix')
+            prefix = match.group('prefix')
 
-        if prefix:
-            record.error('bad prefix on WARC version header', prefix)
-        
-        #Read headers
-        line = stream.readline()
-        while line and not nl_rx.match(line):       
-          
-            #print 'header', line
-            match = header_rx.match(line)
-            if match:
-                name = match.group('name').strip()
-                value = [match.group('value').strip()]
-                #print 'match',name, value
+            if prefix:
+                record.error('bad prefix on WARC version header', prefix)
+            
+            #Read headers
+            line = stream.readline()
+            while line and not nl_rx.match(line):       
+              
+                #print 'header', line
+                match = header_rx.match(line)
+                if match:
+                    name = match.group('name').strip()
+                    value = [match.group('value').strip()]
+                    #print 'match',name, value
 
-                line = stream.readline()
-                match = value_rx.match(line)
-                while match:
-                    value.append(match.group().strip())
                     line = stream.readline()
                     match = value_rx.match(line)
+                    while match:
+                        value.append(match.group().strip())
+                        line = stream.readline()
+                        match = value_rx.match(line)
 
-                value = " ".join(value)
-                
-                if type_rx.match(name):
-                    if value:
-                        content_type = value
-                    else:
-                        record.error('invalid header',name,value) 
-                elif length_rx.match(name):
-                    try:
-                        #print name, value
-                        content_length = int(value)
-                        #print content_length
-                    except ValueError:
-                        record.error('invalid header',name,value) 
-                else:
-                    record.headers.append((name,value))
-
-        # have read blank line following headers
-        
-        # read content
-        if content_length:
-            content=[]
-            length = 0
-            while length <= content_length:
-                line = stream.readline()
-                if not line:
-                       # print 'no more data' 
-                        break
-                content.append(line)
-                length+=len(line)
-            content="".join(content)
-            content, line = content[0:content_length], content[content_length+1:]
-            if len(content)!= content_length:
-                record.error('content length mismatch (is, claims)', len(content), content_length)
-            record.content = (content_type, content)
-        else:   
-            record.error('missing header', WarcRecord.CONTENT_LENGTH)
-
-        # read trailing newlines
-        
-        newlines = 0
-        while line:
-            if nl_rx.match(line):
-                newlines+=1
-                #print 'newline'
-                if newlines == 2:
-                    break
-
-            else:
-                #print 'line', line, newlines
-                newlines = 0
-                record.error('trailing data after content', line)
-            line = stream.readline()
-
-        if newlines < 2:
-            record.error('less than two terminating newlines at end of record', newlines)
-
-        return (record, ())
-    
-    else:
-        return (None, errors)
-    
+                    value = " ".join(value)
                     
+                    if type_rx.match(name):
+                        if value:
+                            content_type = value
+                        else:
+                            record.error('invalid header',name,value) 
+                    elif length_rx.match(name):
+                        try:
+                            #print name, value
+                            content_length = int(value)
+                            #print content_length
+                        except ValueError:
+                            record.error('invalid header',name,value) 
+                    else:
+                        record.headers.append((name,value))
+
+            # have read blank line following headers
             
-                
+            # read content
+            if content_length:
+                content=[]
+                length = 0
+                while length <= content_length:
+                    line = stream.readline()
+                    if not line:
+                           # print 'no more data' 
+                            break
+                    content.append(line)
+                    length+=len(line)
+                content="".join(content)
+                content, line = content[0:content_length], content[content_length+1:]
+                if len(content)!= content_length:
+                    record.error('content length mismatch (is, claims)', len(content), content_length)
+                if not line:
+                    line = stream.readline()
+                record.content = (content_type, content)
+            else:   
+                record.error('missing header', WarcRecord.CONTENT_LENGTH)
 
+            # read trailing newlines
+            
+            newlines = 0
+            while line:
+                if nl_rx.match(line):
+                    newlines+=1
+                    #print 'newline'
+                    if newlines == 2:
+                        break
 
-WarcRecord.parse = staticmethod(parse)
+                else:
+                    #print 'line', line, newlines
+                    newlines = 0
+                    record.error('trailing data after content', line)
+                line = stream.readline()
+
+            if newlines < 2:
+                record.error('less than two terminating newlines at end of record', newlines)
+
+            return (record, ())
+        
+        else:
+            return (None, errors)
+        
+                        
+            
+register_record_type(version_rx, WarcRecord)

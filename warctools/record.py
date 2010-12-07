@@ -2,7 +2,6 @@
 
 from warctools.stream import open_record_stream
 
-
 def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
     def _add_headers(cls):
@@ -24,6 +23,7 @@ class ArchiveRecord(object):
         self.content = content if content else (None, "")
         self.errors = errors if errors else []
 
+    HEADERS=staticmethod(add_headers)
 
     @property
     def date(self):
@@ -62,21 +62,22 @@ class ArchiveRecord(object):
     def _write_to(self, out, newline):  
         raise AssertionError, 'this is bad'
 
+
+    ### class methods for parsing
     @classmethod
-    def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip="auto"): 
-        return open_record_stream(cls, filename, file_handle, mode, gzip)
+    def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip="auto"):
+        """Generically open an archive - magic autodetect""" 
+        return open_record_stream(None, filename, file_handle, mode, gzip)
 
-
-    HEADERS=staticmethod(add_headers)
-    
-
-    def parse(self, stream):
-        """Reads a warc record from the stream, returns a tuple (record, errors). 
+    @classmethod
+    def make_parser(self):
+        """Reads a (w)arc record from the stream, returns a tuple (record, errors). 
         Either records is null or errors is null. Any record-specific errors are 
         contained in the record - errors is only used when *nothing* could be parsed"""
+        raise StandardError
 
 
-
+    
 
 
 

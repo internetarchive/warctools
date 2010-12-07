@@ -5,13 +5,47 @@ import gzip
 import re
 
 from warctools.log import debug
+from warctools.archive_detect import is_gzip_file, guess_record_type
+
+def open_record_stream(record_parser=None, filename=None, file_handle=None, mode="rb+", gzip="auto"):
+        """Can take a filename or a file_handle. Normally called indirectly from
+        A record class i.e WarcRecord.open_archive. If the first parameter is None, will try to guess"""
+
+        if file_handle is None:
+            file_handle = open(filename, mode=mode)
+        else:
+            if not filename:
+                filename = file_handle.name
+
+        if record_parser == None:
+            record_parser = guess_record_type(file_handle).make_parser()
+            
+        if gzip == 'auto':
+            if is_gzip_file(file_handle):
+                gzip = 'record'
+                #debug('autodetect: record gzip')
+            else:
+                # assume uncompressed file
+                #debug('autodetected: uncompressed file')
+                gzip = None
+                    
+
+        if gzip=='record':
+            return GzipRecordStream(file_handle, record_parser)
+        elif gzip=='file':
+            return GzipFileStream(file_handle, record_parser)
+        else:
+            return RecordStream(file_handle, record_parser)
+        
 
 class RecordStream(object):
     """A readable/writable stream of Archive Records. Can be iterated over
-    or read_records can give more control, and potentially offset information"""
-    def __init__(self, file_handle, record):
+    or read_records can give more control, and potentially offset information.
+    """
+    def __init__(self, file_handle, record_parser):
         self.fh = file_handle
-        self.record = record
+        self.record_parser = record_parser
+        self._parser = None
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
@@ -44,11 +78,8 @@ class RecordStream(object):
     def _read_record(self):
         """overridden by sub-classes to read individual records"""
         offset = self.fh.tell()
-        record, errors= self.record.parse(self.fh)
+        record, errors= self.record_parser.parse(self.fh)
         return offset, record, errors
-
-    def index(self):
-        pass
 
     def write(self, record):
         record.write_to(self)
@@ -58,12 +89,14 @@ class RecordStream(object):
 
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped archive records"""
-    def __init__(self, file_handle, record):
-        RecordStream.__init__(self,file_handle, record)
+    def __init__(self, file_handle, record_parser):
+        RecordStream.__init__(self,file_handle, record_parser)
     def _read_record(self):
         offset = self.fh.tell()
         gz = GzipRecordFile(self.fh)
-        record, errors= self.record.parse(gz)
+        record, errors= self.record_parser.parse(gz)
+        # now we have first record, keep reading until at end of
+        # gzip archive
         if not gz.done:
             nlines = 0
             while gz.readline():
@@ -87,34 +120,10 @@ class GzipFileStream(RecordStream):
         return None, record, errors
 
 
-def open_record_stream(record, filename=None, file_handle=None, mode="rb+", gzip="auto"):
-        """Can take a filename or a file_handle. Normally called indirectly from
-        A record class i.e WarcRecord.open_archive"""
 
-        if file_handle is None:
-            file_handle = open(filename, mode=mode)
-        else:
-            if not filename:
-                filename = file_handle.name
-        if gzip == 'auto':
-            signature = file_handle.read(2)
-            file_handle.seek(-2,1)
-            if signature == '\x1f\x8b':
-                gzip = 'record'
-                debug('autodetect: record gzip')
-            else:
-                # assume uncompressed file
-                debug('autodetected: uncompressed file')
-                gzip = None
-                    
-
-        if gzip=='record':
-            return GzipRecordStream(file_handle, record)
-        elif gzip=='file':
-            return GzipFileStream(file_handle, record)
-        else:
-            return RecordStream(file_handle, record)
-        
+### record-gzip handler, based on zlib 
+### implements readline() access over a a single
+### gzip-record. must be re-created to read another record
     
 
 CHUNK_SIZE=1024 # the size to read in, make this bigger things go faster.
@@ -146,7 +155,6 @@ class GzipRecordFile(object):
                     return output
         
     def readline(self):
-
         while True:
             output = self._getline()
             if output:
