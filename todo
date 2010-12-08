@@ -33,6 +33,12 @@ done:
     newline ambivilence
     error logging
 
+done a bit:
+    warcdump
+    warc2warc
+
+done abit:
+
 todo:
     warc file writing, printing
     arc file reading, printing
@@ -41,7 +47,6 @@ todo:
     writing to compressed record streams
 
 frontend todo:
-    warc2warc
     arc2warc 
     warc2cdx  - cdx index files ala ia
     warcdump - human readable summary
@@ -49,6 +54,25 @@ frontend todo:
     warcvalidator - either return 0 or 1 for a valid archive,
                     print out recovered archive
     
+------
+next todo:
+
+done:
+    arc,warc reading
+    gzip/plain reading
+
+    human readable dump
+
+    extracting offsets from a file
+
+    autodetect gzip
+    autodetect arc/warc
+
+todo:
+    arc2warc
+    warc2cdx
+    warcfilter
+    warcvalidator
 
 
 rough idea:
