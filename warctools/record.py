@@ -55,11 +55,11 @@ class ArchiveRecord(object):
             for e in self.errors:
                 print '\t', e
 
-    def write_to(self, out, newline='\x0D\x0A'):  
-        self._write_to(out, newline)
+    def write_to(self, out, newline='\x0D\x0A', gzip=None):  
+        self._write_to(out, newline, gzip)
 
 
-    def _write_to(self, out, newline):  
+    def _write_to(self, out, newline, gzip):  
         raise AssertionError, 'this is bad'
 
 

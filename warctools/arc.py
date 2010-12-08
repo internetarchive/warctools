@@ -30,7 +30,7 @@ class ArcRecord(ArchiveRecord):
     def url(self):
         return self.headers[self.URL]
 
-    def _write_to(self, out, nl):  
+    def _write_to(self, out, nl,gzip):  
         pass
 
     @classmethod

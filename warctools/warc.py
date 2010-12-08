@@ -27,7 +27,7 @@ class WarcRecord(ArchiveRecord):
     def id(self):
         return self.headers[self.ID]
 
-    def _write_to(self, out, nl):  
+    def _write_to(self, out, nl,gzip):  
         """WARC Format:
             VERSION NL
             (Key: Value NL)* 
@@ -37,6 +37,7 @@ class WarcRecord(ArchiveRecord):
             
             don't write multi line headers
         """
+
         out.write(self.version)
         out.write(nl)
         for k,v in self.headers:
