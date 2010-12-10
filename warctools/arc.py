@@ -27,10 +27,10 @@ class ArcRecord(ArchiveRecord):
         ArchiveRecord.__init__(self,headers,content,errors) 
 
     @property
-    def url(self):
-        return self.headers[self.URL]
+    def type(self):
+        return "response"
 
-    def _write_to(self, out, nl,gzip):  
+    def _write_to(self, out, nl):  
         pass
 
     @classmethod

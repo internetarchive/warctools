@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from warctools import ArchiveRecord
+from warctools import ArchiveRecord, WarcRecord
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 
@@ -24,31 +24,31 @@ def main(argv):
 
     out = sys.stdout
     if len(input_files) < 1:
-        parser.error("no imput warc file(s)")
+        dump_archive(WarcRecord.open_archive(file_handle=sys.stdin, gzip=None), name="-",offsets=False)
         
-    for name in input_files:
-        fh = ArchiveRecord.open_archive(name, gzip="auto")
+    else:
+        for name in input_files:
+            fh = ArchiveRecord.open_archive(name, gzip="auto")
+            dump_archive(fh,name)
 
-        for (offset, record, errors) in fh.read_records(limit=None):
-            if record:
-                print "archive record at %s:%d"%(name,offset)
-                record.dump(content=True)
-            elif errors:
-                print "warc errors at %s:%d"%(name, offset)
-                for e in errors:
-                    print '\t', e
-            else:
-                print
-                print 'note: no errors encountered in tail of file'
-
-
-
-
-        fh.close()
-
+            fh.close()
 
 
     return 0
+
+def dump_archive(fh, name, offsets=True):
+    for (offset, record, errors) in fh.read_records(limit=None, offsets=offsets):
+        if record:
+            print "archive record at %s:%s"%(name,offset)
+            record.dump(content=True)
+        elif errors:
+            print "warc errors at %s:%d"%(name, offset)
+            for e in errors:
+                print '\t', e
+        else:
+            print
+            print 'note: no errors encountered in tail of file'
+
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

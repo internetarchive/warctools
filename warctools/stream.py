@@ -7,7 +7,7 @@ import re
 from warctools.log import debug
 from warctools.archive_detect import is_gzip_file, guess_record_type
 
-def open_record_stream(record_parser=None, filename=None, file_handle=None, mode="rb+", gzip="auto"):
+def open_record_stream(record_class=None, filename=None, file_handle=None, mode="rb+", gzip="auto"):
         """Can take a filename or a file_handle. Normally called indirectly from
         A record class i.e WarcRecord.open_archive. If the first parameter is None, will try to guess"""
 
@@ -17,8 +17,11 @@ def open_record_stream(record_parser=None, filename=None, file_handle=None, mode
             if not filename:
                 filename = file_handle.name
 
-        if record_parser == None:
-            record_parser = guess_record_type(file_handle).make_parser()
+        if record_class == None:
+            record_class = guess_record_type(file_handle)
+            
+            
+        record_parser = record_class.make_parser()
             
         if gzip == 'auto':
             if is_gzip_file(file_handle):
@@ -51,7 +54,7 @@ class RecordStream(object):
         """Same as a seek on a file"""
         self.fh.seek(offset,pos)
 
-    def read_records(self, limit=1):
+    def read_records(self, limit=1, offsets=True):
         """Yield a tuple of (offset, record, errors) where
         Offset is either a number or None. 
         Record is an object and errors is an empty list
@@ -59,7 +62,7 @@ class RecordStream(object):
 
         nrecords = 0
         while nrecords < limit or limit is None:
-            offset, record, errors = self._read_record()
+            offset, record, errors = self._read_record(offsets)
             nrecords+=1
             yield (offset, record,errors)
             if not record: 
@@ -67,7 +70,7 @@ class RecordStream(object):
 
     def __iter__(self):
         while True:
-            offset, record, errors = self._read_record()
+            offset, record, errors = self._read_record(offsets=False)
             if record:
                 yield record
             elif errors:
@@ -75,9 +78,9 @@ class RecordStream(object):
             else:
                 break
             
-    def _read_record(self):
+    def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
-        offset = self.fh.tell()
+        offset = self.fh.tell() if offsets else None
         record, errors= self.record_parser.parse(self.fh)
         return offset, record, errors
 
@@ -91,8 +94,8 @@ class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped archive records"""
     def __init__(self, file_handle, record_parser):
         RecordStream.__init__(self,file_handle, record_parser)
-    def _read_record(self):
-        offset = self.fh.tell()
+    def _read_record(self, offsets):
+        offset = self.fh.tell() if offsets else None
         gz = GzipRecordFile(self.fh)
         record, errors= self.record_parser.parse(gz)
         # now we have first record, keep reading until at end of
@@ -114,7 +117,7 @@ class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
     def __init__(self, file_handle, record):
         RecordStream.__init__(self,gzip.GzipFile(fileobj=file_handle), record)
-    def _read_record(self):
+    def _read_record(self, offsets):
         # no real offsets in a gzipped file (no seperate records)
         offset, record, errors = RecordStream._read_record(self)
         return None, record, errors

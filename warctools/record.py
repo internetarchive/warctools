@@ -1,5 +1,7 @@
 """a skeleton class for archive records"""
 
+from gzip import GzipFile
+
 from warctools.stream import open_record_stream
 
 def add_headers(**kwargs):
@@ -13,7 +15,7 @@ def add_headers(**kwargs):
 
 
 
-@add_headers(DATE='Date', CONTENT_TYPE='Type', CONTENT_LENGTH='Length')
+@add_headers(DATE='Date', CONTENT_TYPE='Type', CONTENT_LENGTH='Length', TYPE='Type',URL='Url')
 class ArchiveRecord(object):
     """An archive record has some headers, maybe some content and
     a list of errors encountered. record.headers is a list of tuples (name,
@@ -27,10 +29,31 @@ class ArchiveRecord(object):
 
     @property
     def date(self):
-        return self.headers[self.DATE]
+        return self.get_header(self.DATE)
 
     def error(self, *args):
         self.errors.append(args)
+        
+    @property
+    def type(self):
+        return self.get_header(self.TYPE)
+
+    @property
+    def content_type(self):
+        return self.content[0]
+
+    @property
+    def content_length(self):
+        return len(self.content[1])
+
+    @property
+    def url(self):
+        return self.get_header(self.URL)
+
+    def get_header(self, name):
+        for k,v in self.headers:
+            if name == k:
+                return v
 
     def dump(self, content=True):
         print 'Headers:'
@@ -55,11 +78,15 @@ class ArchiveRecord(object):
             for e in self.errors:
                 print '\t', e
 
-    def write_to(self, out, newline='\x0D\x0A', gzip=None):  
-        self._write_to(out, newline, gzip)
+    def write_to(self, out, newline='\x0D\x0A', gzip=False):  
+        if gzip:
+            out=GzipFile(fileobj=out)
+        self._write_to(out, newline)
+        if gzip:
+            out.close()
 
 
-    def _write_to(self, out, newline, gzip):  
+    def _write_to(self, out, newline):  
         raise AssertionError, 'this is bad'
 
 
@@ -67,7 +94,9 @@ class ArchiveRecord(object):
     @classmethod
     def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip="auto"):
         """Generically open an archive - magic autodetect""" 
-        return open_record_stream(None, filename, file_handle, mode, gzip)
+        if cls is ArchiveRecord:
+            cls = None # means guess
+        return open_record_stream(cls, filename, file_handle, mode, gzip)
 
     @classmethod
     def make_parser(self):

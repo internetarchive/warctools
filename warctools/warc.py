@@ -13,6 +13,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     ID = 'WARC-Record-ID',
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
+    URL='WARC-Target-URI',
 )
 class WarcRecord(ArchiveRecord):
     def __init__(self, version=None, headers=None, content=None, errors=None):
@@ -20,14 +21,10 @@ class WarcRecord(ArchiveRecord):
         self.version = version
 
     @property
-    def type(self):
-        return self.headers[self.TYPE]
-
-    @property
     def id(self):
-        return self.headers[self.ID]
+        return self.get_header(self.ID)
 
-    def _write_to(self, out, nl,gzip):  
+    def _write_to(self, out, nl):  
         """WARC Format:
             VERSION NL
             (Key: Value NL)* 
@@ -37,7 +34,6 @@ class WarcRecord(ArchiveRecord):
             
             don't write multi line headers
         """
-
         out.write(self.version)
         out.write(nl)
         for k,v in self.headers:
