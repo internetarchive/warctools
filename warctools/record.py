@@ -65,8 +65,8 @@ class ArchiveRecord(object):
             print '\t',self.CONTENT_TYPE,': ',content_type
             print '\t',self.CONTENT_LENGTH,': ',len(content_body)
             print 'Content:'
-            for _,line in zip(range(20),content_body.split('\n')):
-                print '\t', line
+            ln = min(1024, len(content_body))
+            print '\t', content_body[:ln].decode('ascii', 'ignore').encode('ascii')
             print '\t...'
             print 
         else:

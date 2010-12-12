@@ -52,9 +52,74 @@ frontend todo:
     warcdump - human readable summary
     warcfilter - filter on id, mimetype or url (date)?
     warcvalidator - either return 0 or 1 for a valid archive,
-                    print out recovered archive
-    
+
+
+done:
+    warcfilter - akeleton
+    warcvalidator - simple
+
+warcfilter:
+    The filter can be used on the WARC-Subject-Uri field (if existing), on
+    the Content-Type field or on the WARC-Type field.
+
+
+
+
+warc2cdx: find some version of the cdx format ?
+
+726      * <p>Outputs using a pseudo-CDX format as described here:
+727      * <a href="http://www.archive.org/web/researcher/cdx_legend.php">CDX
+728      * Legent</a> and here
+729      * <a href="http://www.archive.org/web/researcher/example_cdx.php">Example</a>.
+730      * Legend used in below is: 'CDX b e a m s c V (or v if uncompressed) n g'
+
+
+" CDX N b a m s k r M V g";
+
+massaged url
+date original response-code redirect metatags(-) offset name
+
+The default first line of a CDX file is : 
+CDX A b e a m s c k r V v D d g M n
+
+http://web.archive.org/web/20080503004330/http://www.archive.org/web/researcher/example_cdx.php
+
+
+A canonized url 
+b date ** 
+e IP ** 
+a original url ** 
+m mime type of original document * 
+s response code * 
+c old style checksum * 
+k new style checksum * 
+r redirect * 
+d uncompressed dat file offset 
+V compressed arc file offset * 
+v uncompressed arc file offset * 
+D compressed dat file offset 
+d uncompressed dat file offset 
+g file name 
+M meta tags (AIF) * 
+n arc document length * 
+
+f frame * 
+h original host 
+i image * 
+j original jump point 
+l link * 
+o port 
+p original path 
+t title * 
+x url in other href tages * 
+y url in other src tags * 
+z url found in script * 
+
+
+date
+
 ------
+
 next todo:
 
 done:
@@ -145,3 +210,13 @@ def arcrecord(record)
     def ip()
     def to_warc_records(dest=stringio) -> stringio
     
+
+
+todo
+
+
+warc.py - add iso failures to error list 
+
+mandatory headers
+header uniqueness
+well formed values for mandatory headers/dates/types
