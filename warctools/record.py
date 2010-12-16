@@ -1,8 +1,11 @@
 """a skeleton class for archive records"""
 
 from gzip import GzipFile
+import re
 
 from warctools.stream import open_record_stream
+
+strip = re.compile(r'[^\w\t \|\\\/]')
 
 def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
@@ -69,7 +72,7 @@ class ArchiveRecord(object):
             print '\t',self.CONTENT_LENGTH,':',len(content_body)
             print 'Content:'
             ln = min(1024, len(content_body))
-            print '\t', content_body[:ln].decode('ascii', 'ignore').encode('ascii')
+            print '\t', strip.sub(lambda x:'\\x%00X'%ord(x.group()),content_body[:ln])
             print '\t...'
             print 
         else:

@@ -104,8 +104,9 @@ class GzipRecordStream(RecordStream):
             if record:
                 record.error('multiple warc records in gzip record file') 
                 return None, record, errors
+            self.gz.close()
             errors.extend(r_errors)
-
+    
 
         offset = self.fh.tell() if offsets else None
         self.gz = GzipRecordFile(self.fh)
@@ -179,6 +180,10 @@ class GzipRecordFile(object):
             if not chunk:
                 self.done = True
                 continue
+
+    def close(self):
+        if self.z:
+            self.z.flush()
             
                 
     
