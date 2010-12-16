@@ -13,6 +13,9 @@ def add_headers(**kwargs):
         return cls
     return _add_headers
 
+class ArchiveParser(object):
+    """ methods parse, and trim """
+    pass 
 
 
 @add_headers(DATE='Date', CONTENT_TYPE='Type', CONTENT_LENGTH='Length', TYPE='Type',URL='Url')
@@ -62,8 +65,8 @@ class ArchiveRecord(object):
         if content and self.content:
             print 'Content Headers:'
             content_type, content_body = self.content
-            print '\t',self.CONTENT_TYPE,': ',content_type
-            print '\t',self.CONTENT_LENGTH,': ',len(content_body)
+            print '\t',self.CONTENT_TYPE,':',content_type
+            print '\t',self.CONTENT_LENGTH,':',len(content_body)
             print 'Content:'
             ln = min(1024, len(content_body))
             print '\t', content_body[:ln].decode('ascii', 'ignore').encode('ascii')
@@ -78,7 +81,7 @@ class ArchiveRecord(object):
             for e in self.errors:
                 print '\t', e
 
-    def write_to(self, out, newline='\x0D\x0A', gzip=False):  
+    def write_to(self, out, newline='\x0D\x0A', gzip=False):
         if gzip:
             out=GzipFile(fileobj=out)
         self._write_to(out, newline)

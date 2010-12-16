@@ -34,21 +34,23 @@ def main(argv):
 
 
     invert = options.invert
+    out = sys.stdout
     pattern = re.compile(pattern)
     if not input_files:
             fh = ArchiveRecord.open_archive(file_handle=sys.stdin, gzip=None)
-            filter_archive(fh, options, pattern)
+            filter_archive(fh, options, pattern, out)
     else:
         for name in input_files:
             fh = ArchiveRecord.open_archive(name, gzip="auto")
-            filter_archive(fh, options, pattern)
+            filter_archive(fh, options, pattern,out)
             fh.close()
 
 
 
     return 0
 
-def filter_archive(fh, options, pattern):
+def filter_archive(fh, options, pattern, out):
+        invert = options.invert
         for record in fh:
             if options.url:
                 if bool(record.url and pattern.search(record.url)) ^ invert :

@@ -20,7 +20,6 @@ def open_record_stream(record_class=None, filename=None, file_handle=None, mode=
         if record_class == None:
             record_class = guess_record_type(file_handle)
             
-            
         record_parser = record_class.make_parser()
             
         if gzip == 'auto':
@@ -94,24 +93,26 @@ class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped archive records"""
     def __init__(self, file_handle, record_parser):
         RecordStream.__init__(self,file_handle, record_parser)
+        self.gz = None
+
     def _read_record(self, offsets):
+        errors = []
+        if self.gz is not None:
+            # we have an open record, so try for a record at the end
+            # at best will read trailing newlines at end of last record
+            record, r_errors = self.record_parser.parse(self.gz)
+            if record:
+                record.error('multiple warc records in gzip record file') 
+                return None, record, errors
+            errors.extend(r_errors)
+
+
         offset = self.fh.tell() if offsets else None
-        gz = GzipRecordFile(self.fh)
-        record, errors= self.record_parser.parse(gz)
-        # now we have first record, keep reading until at end of
-        # gzip archive
-        if not gz.done:
-            nlines = 0
-            while gz.readline():
-                nlines+=1
-            if nlines:
-                e = ("trailing data in gzipped record, try 'file' mode, at gzip archive offset", offset," lines ignored", nlines)
-                if record:
-                    record.error(*e)
-                else:
-                    errors.append(e)
-                
+        self.gz = GzipRecordFile(self.fh)
+        record, r_errors= self.record_parser.parse(self.gz)
+        errors.extend(r_errors)
         return offset, record, errors
+                
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
@@ -119,8 +120,7 @@ class GzipFileStream(RecordStream):
         RecordStream.__init__(self,gzip.GzipFile(fileobj=file_handle), record)
     def _read_record(self, offsets):
         # no real offsets in a gzipped file (no seperate records)
-        offset, record, errors = RecordStream._read_record(self)
-        return None, record, errors
+        return RecordStream._read_record(self, False)
 
 
 
@@ -156,7 +156,7 @@ class GzipRecordFile(object):
                     self.buffer = ""
                     
                     return output
-        
+
     def readline(self):
         while True:
             output = self._getline()

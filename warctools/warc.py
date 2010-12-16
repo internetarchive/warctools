@@ -2,7 +2,7 @@
 
 import re
 
-from warctools.record import ArchiveRecord
+from warctools.record import ArchiveRecord,ArchiveParser
 from warctools.archive_detect import register_record_type
 
 bad_lines = 5 # when to give up looking for the version stamp
@@ -89,33 +89,58 @@ required_headers = set((
     WarcRecord.DATE.lower(),
 ))
 
-class WarcParser(object):
+class WarcParser(ArchiveParser):
     def __init__(self):
-            self.at_first = True
+        self.trailing_newlines = 0
+
     def parse(self,stream):
         """Reads a warc record from the stream, returns a tuple (record, errors). 
         Either records is null or errors is null. Any record-specific errors are 
         contained in the record - errors is only used when *nothing* could be parsed"""
         errors = []
+        version = None
         # find WARC/.*
-        while True:   
-            line = stream.readline()
+        line = stream.readline()
+        newlines = self.trailing_newlines
+        if newlines > 0:
+            while line:
+                match = nl_rx.match(line)
+                if match and newlines > 0:
+                    newlines-=1
+                    if match.group('nl') != '\x0d\x0a':
+                        errors.append(('incorrect trailing newline', match.group('nl')))
+                    line = stream.readline()
+                    if newlines == 0:
+                        break
+                else:
+                    break
+                    
+            if newlines > 0:
+                errors+=('less than two terminating newlines at end of previous record, missing', newlines)
+
+        while line:
             match = version_rx.match(line)
 
             if match or not line:
+                version = match.group('version')
                 break
             elif not nl_rx.match(line):
                 errors.append(('ignored line', line)) 
                 if len(errors) > bad_lines:
-                    raise ValueError, errors  
-            
+                    errors.append(('too many errors, giving up hope',))
+                    return (None,errors)  
+            line = stream.readline()
+        if not line:
+            if version:
+                errors.append('warc version but no headers', version)
+            self.trailing_newlines = 0
+            return (None, errors)
         if line:
             content_length = 0
             content_type = None
 
-            record = WarcRecord(errors=errors)
+            record = WarcRecord(errors=errors, version=version)
 
-            record.version = match.group('version')
 
             if match.group('nl') != '\x0d\x0a':
                 record.error('incorrect newline in version', match.group('nl'))
@@ -145,7 +170,7 @@ class WarcParser(object):
                     line = stream.readline()
                     match = value_rx.match(line)
                     while match:
-                        print 'follow', repr(line)
+                        #print 'follow', repr(line)
                         if match.group('nl') != '\x0d\x0a':
                             record.error('incorrect newline in follow header',line, match.group('nl'))
                         value.append(match.group('value').strip())
@@ -176,55 +201,75 @@ class WarcParser(object):
                 if content_length > 0:
                     content=[]
                     length = 0
-                    while length <= content_length:
+                    while length < content_length:
                         line = stream.readline()
                         if not line:
                                # print 'no more data' 
                                 break
                         content.append(line)
                         length+=len(line)
+                        #print length, content_length, line
+                    #else:
+                        # print 'last line of content', repr(line)
                     content="".join(content)
                     content, line = content[0:content_length], content[content_length:]
                     if len(content)!= content_length:
                         record.error('content length mismatch (is, claims)', len(content), content_length)
-                    if not line:
-                        line = stream.readline()
                     record.content = (content_type, content)
             else:   
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
 
+            #print 'read content', repr(line)
             # have read trailing newlines
 
             # check mandatory headers
             #   WARC-Type
             #   WARC-Date WARC-Record-ID Content-Length
             
-            newlines = 0
+            # ignore mandatory newlines for now
+            # because they are missing.
+            # instead we trim a number of them off the next
+            # parse
+
+            # we can't re-wind easily without wrapping
+            # every file handle
+
+            # not brilliant but hey-ho
+
+
+
+            self.trailing_newlines = 2
+
+            return (record, ())
+
+    def trim(self, stream):
+        """read the end of the file"""
+        newlines = self.trailing_newlines
+        self.trailing_newlines = 0
+        errors = []
+        if newlines:
+            line = stream.readline()
             while line:
-                #nprint 'trailing', repr(line)
+                #print 'trimming', repr(line)
                 match = nl_rx.match(line)
                 if match:
                     if match.group('nl') != '\x0d\x0a':
-                        record.error('incorrect trailing newline', match.group('nl'))
-                    newlines+=1
+                        errors.append(('incorrect trailing newline', match.group('nl')))
+                    newlines-=1
                     #print 'newline'
-                    if newlines == 2:
+                    if newlines == 0:
                         break
 
                 else:
                     #print 'line', line, newlines
                     newlines = 0
-                    record.error('trailing data after content', line)
+                    errors.append(('trailing data after content', line))
                 line = stream.readline()
+            if newlines > 0:
+                errors+=('less than two terminating newlines at end of record, missing', newlines)
 
-            if newlines < 2:
-                record.error('less than two terminating newlines at end of record', newlines)
+        return errors
 
-            return (record, ())
-        
-        else:
-            return (None, errors)
-        
-                        
+                    
             
 register_record_type(version_rx, WarcRecord)

@@ -16,7 +16,7 @@ parser = OptionParser(usage="%prog [options] url (url ...)")
 parser.add_option("-o", "--output", dest="output",
                        help="output warc file")
 parser.add_option("-l", "--limit", dest="limit")
-parser.add_option("-I", "--input", dest="input_format (ignored)")
+parser.add_option("-I", "--input", dest="input_format", help="(ignored)")
 parser.add_option("-Z", "--gzip", dest="gzip", action="store_true", help="compress output")
 parser.add_option("-L", "--log-level", dest="log_level")
 

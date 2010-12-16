@@ -42,7 +42,7 @@ def dump_archive(fh, name, offsets=True):
             print "archive record at %s:%s"%(name,offset)
             record.dump(content=True)
         elif errors:
-            print "warc errors at %s:%d"%(name, offset)
+            print "warc errors at %s:%d"%(name, offset if offset else 0)
             for e in errors:
                 print '\t', e
         else:

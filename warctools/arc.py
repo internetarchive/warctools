@@ -2,7 +2,7 @@
 
 import re
 
-from warctools.record import ArchiveRecord
+from warctools.record import ArchiveRecord,ArchiveParser
 from warctools.stream import open_record_stream
 from warctools.archive_detect import register_record_type
 
@@ -50,10 +50,11 @@ nl_rx=rx('^\r\n|\r|\n$')
 length_rx = rx('^'+ArcRecord.CONTENT_LENGTH+'$')
 type_rx = rx('^'+ArcRecord.CONTENT_TYPE+'$')
 
-class ArcParser(object):
+class ArcParser(ArchiveParser):
     def __init__(self):
         self.version = 0
         self.headers = []
+        self.trailing_newlines = 0
 
     def parse(self, stream):
         record = None
@@ -62,6 +63,7 @@ class ArcParser(object):
         header_line = stream.readline()
         if not header_line:
             return (None,())
+
 
         if not self.version:
             arc_version_line = stream.readline()
@@ -84,6 +86,19 @@ class ArcParser(object):
             record = ArcRecordHeader(headers = arc_headers, version=arc_version, errors=errors)
 
         else:
+            newlines = self.trailing_newlines
+            if newlines > 0:
+                while header_line:
+                    match = nl_rx.match(header_line)
+                    if match and newlines > 0:
+                        newlines-=1
+                        header_line = stream.readline()
+                        if newlines == 0:
+                            break
+                    else:
+                        break
+                    
+
             headers = self.get_header_list(header_line.strip().split())
             content_type, content_length, errors = self.get_content_headers(headers)
 
@@ -94,7 +109,7 @@ class ArcParser(object):
         if content_length:
             content=[]
             length = 0
-            while length <= content_length:
+            while length < content_length:
                 line = stream.readline()
                 if not line:
                        # print 'no more data' 
@@ -108,10 +123,12 @@ class ArcParser(object):
 
         if line:
             record.error('trailing data at end of record', line)
+        self.trailing_newlines = 1
 
         return (record, ())
 
-
+    def trim(self, stream):
+        return ()
 
     def get_header_list(self, values):
         return zip(self.headers, values)
