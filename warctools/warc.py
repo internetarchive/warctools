@@ -11,12 +11,17 @@ bad_lines = 5 # when to give up looking for the version stamp
     DATE='WARC-Date',
     TYPE = 'WARC-Type',
     ID = 'WARC-Record-ID',
+    CONCURRENT_TO = 'WARC-Concurent-To',
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
     URL='WARC-Target-URI',
 )
 class WarcRecord(ArchiveRecord):
-    def __init__(self, version=None, headers=None, content=None, errors=None):
+    VERSION="WARC/1.0"
+    RESPONSE="response"
+    REQUEST="request"
+
+    def __init__(self, version=VERSION, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self,headers,content,errors) 
         self.version = version
 
@@ -273,3 +278,33 @@ class WarcParser(ArchiveParser):
                     
             
 register_record_type(version_rx, WarcRecord)
+
+def make_response(id, date, url, content, request_id):
+    headers = [
+            (WarcRecord.TYPE, WarcRecord.RESPONSE),
+            (WarcRecord.ID, id),
+            (WarcRecord.DATE, date),
+            (WarcRecord.URL, url),
+
+    ]
+    if request_id:
+        headers.append((WarcRecord.CONCURRENT_TO, request_id))
+        
+    record=WarcRecord(headers=headers, content=content)
+
+    return record
+
+def make_request(id, date, url, content, response_id):
+    headers = [
+            (WarcRecord.TYPE, WarcRecord.REQUEST),
+            (WarcRecord.ID, id),
+            (WarcRecord.DATE, date),
+            (WarcRecord.URL, url),
+
+    ]
+    if response_id:
+        headers.append((WarcRecord.CONCURRENT_TO, request_id))
+        
+    record=WarcRecord(headers=headers, content=content)
+
+    return record
