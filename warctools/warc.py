@@ -294,16 +294,16 @@ def make_response(id, date, url, content, request_id):
 
     return record
 
-def make_request(id, date, url, content, response_id):
+def make_request(request_id, date, url, content, response_id):
     headers = [
             (WarcRecord.TYPE, WarcRecord.REQUEST),
-            (WarcRecord.ID, id),
+            (WarcRecord.ID, request_id),
             (WarcRecord.DATE, date),
             (WarcRecord.URL, url),
 
     ]
     if response_id:
-        headers.append((WarcRecord.CONCURRENT_TO, request_id))
+        headers.append((WarcRecord.CONCURRENT_TO, response_id))
         
     record=WarcRecord(headers=headers, content=content)
 
