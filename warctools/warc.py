@@ -308,3 +308,9 @@ def make_request(request_id, date, url, content, response_id):
     record=WarcRecord(headers=headers, content=content)
 
     return record
+
+def warc_datetime_str(d):
+    s = d.isoformat()
+    if '.' in s:
+        s = s[:s.find('.')]
+    return s +'Z'   
