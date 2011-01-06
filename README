@@ -1,10 +1,5 @@
 hanzo warc tools:
 
-pre-release version
-
-
-the first 90% is done:
-
     warcvalid.py
         returns 0 if the arguments are all valid arc/warc files
         non zero on error 
@@ -73,3 +68,4 @@ things left to do (in no order):
 
 
 -- tef thomas.figg@hanzoarchives.com
+
