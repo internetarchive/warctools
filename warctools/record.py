@@ -89,6 +89,7 @@ class ArchiveRecord(object):
             out=GzipFile(fileobj=out)
         self._write_to(out, newline)
         if gzip:
+            out.flush()
             out.close()
 
 

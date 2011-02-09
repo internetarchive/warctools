@@ -20,6 +20,7 @@ class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
     RESPONSE="response"
     REQUEST="request"
+    METADATA="metadata"
 
     def __init__(self, version=VERSION, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self,headers,content,errors) 
@@ -46,25 +47,27 @@ class WarcRecord(ArchiveRecord):
             out.write(": ")
             out.write(v)
             out.write(nl)
-        content_type, buffer = self.content
+        content_type, content_buffer = self.content
+        content_buffer=buffer(content_buffer)
         if content_type:
             out.write(self.CONTENT_TYPE)
             out.write(": ")
             out.write(content_type)
             out.write(nl)
-        if buffer:
-            content_length = str(len(buffer))
+        if content_buffer:
+            content_length = len(content_buffer)
             out.write(self.CONTENT_LENGTH)
             out.write(": ")
-            out.write(content_length)
+            out.write(str(content_length))
             out.write(nl)
 
         # end of header blank nl
         out.write(nl)
-        if buffer:
-            out.write(buffer)
+        if content_buffer:
+            out.write(content_buffer[:content_length])
         out.write(nl)
         out.write(nl)
+        out.flush()
 
     def repair(self):
         pass
@@ -308,6 +311,24 @@ def make_request(request_id, date, url, content, response_id):
     record=WarcRecord(headers=headers, content=content)
 
     return record
+
+def make_metadata(meta_id, date, content, concurrent_to=None, url=None):
+    headers = [
+            (WarcRecord.TYPE, WarcRecord.METADATA),
+            (WarcRecord.ID, meta_id),
+            (WarcRecord.DATE, date),
+
+    ]
+    if concurrent_to:
+        headers.append((WarcRecord.CONCURRENT_TO, concurrent_to))
+
+    if url:
+        headers.append((WarcRecord.URL, url))
+        
+    record=WarcRecord(headers=headers, content=content)
+
+    return record
+
 
 def warc_datetime_str(d):
     s = d.isoformat()
