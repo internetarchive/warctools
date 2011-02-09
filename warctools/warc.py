@@ -1,7 +1,7 @@
 """An object to represent warc records, using the abstract record in record.py"""
 
 import re
-
+import hashlib
 from warctools.record import ArchiveRecord,ArchiveParser
 from warctools.archive_detect import register_record_type
 
@@ -15,6 +15,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
     URL='WARC-Target-URI',
+    BLOCK_DIGEST='WARC-Block-Digest',
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
@@ -54,12 +55,24 @@ class WarcRecord(ArchiveRecord):
             out.write(": ")
             out.write(content_type)
             out.write(nl)
-        if content_buffer:
-            content_length = len(content_buffer)
-            out.write(self.CONTENT_LENGTH)
-            out.write(": ")
-            out.write(str(content_length))
-            out.write(nl)
+        if content_buffer is None:
+            content_buffer=""
+
+        content_length = len(content_buffer)
+        out.write(self.CONTENT_LENGTH)
+        out.write(": ")
+        out.write(str(content_length))
+        out.write(nl)
+
+        block_hash = hashlib.sha256()
+        block_hash.update(content_buffer)
+
+        digest= "sha256:%s"%block_hash.hexdigest()
+
+        out.write(self.BLOCK_DIGEST)
+        out.write(": ")
+        out.write(digest)
+        out.write(nl)
 
         # end of header blank nl
         out.write(nl)
@@ -226,6 +239,8 @@ class WarcParser(ArchiveParser):
                     record.content = (content_type, content)
             else:   
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
+
+            # READLINE BUG - eats trailing terminating newlines when content doesn't have a \n
 
             #print 'read content', repr(line)
             # have read trailing newlines
