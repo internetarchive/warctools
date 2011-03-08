@@ -73,7 +73,7 @@ class RecordStream(object):
             if record:
                 yield record
             elif errors:
-                raise errors
+                raise StandardError('Errors while decoding '+",".join(errors))
             else:
                 break
             

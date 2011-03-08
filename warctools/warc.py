@@ -11,7 +11,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     DATE='WARC-Date',
     TYPE = 'WARC-Type',
     ID = 'WARC-Record-ID',
-    CONCURRENT_TO = 'WARC-Concurent-To',
+    CONCURRENT_TO = 'WARC-Concurrent-To',
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
     URL='WARC-Target-URI',
@@ -237,10 +237,15 @@ class WarcParser(ArchiveParser):
                     if len(content)!= content_length:
                         record.error('content length mismatch (is, claims)', len(content), content_length)
                     record.content = (content_type, content)
+                    if nl_rx.match(line):
+                        self.trailing_newlines = 1
+                    else:
+                        self.trailing_newlines = 2
             else:   
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
+                self.trailing_newlines = 2
 
-            # READLINE BUG - eats trailing terminating newlines when content doesn't have a \n
+            # Fixed: READLINE BUG - eats trailing terminating newlines when content doesn't have a \n
 
             #print 'read content', repr(line)
             # have read trailing newlines
@@ -261,7 +266,6 @@ class WarcParser(ArchiveParser):
 
 
 
-            self.trailing_newlines = 2
 
             return (record, ())
 
