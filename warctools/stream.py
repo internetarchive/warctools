@@ -19,7 +19,10 @@ def open_record_stream(record_class=None, filename=None, file_handle=None, mode=
 
         if record_class == None:
             record_class = guess_record_type(file_handle)
-            
+        
+        if record_class == None:
+            raise StandardError('Failed to guess compression')
+
         record_parser = record_class.make_parser()
             
         if gzip == 'auto':

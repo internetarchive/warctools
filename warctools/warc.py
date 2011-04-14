@@ -22,6 +22,7 @@ class WarcRecord(ArchiveRecord):
     RESPONSE="response"
     REQUEST="request"
     METADATA="metadata"
+    CONVERSION="conversion"
 
     def __init__(self, version=VERSION, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self,headers,content,errors) 
@@ -347,6 +348,25 @@ def make_metadata(meta_id, date, content, concurrent_to=None, url=None):
     record=WarcRecord(headers=headers, content=content)
 
     return record
+
+
+def make_conversion(conv_id, date, content, concurrent_to=None, url=None):
+    headers = [
+            (WarcRecord.TYPE, WarcRecord.CONVERSION),
+            (WarcRecord.ID, conv_id),
+            (WarcRecord.DATE, date),
+
+    ]
+    if concurrent_to:
+        headers.append((WarcRecord.CONCURRENT_TO, concurrent_to))
+
+    if url:
+        headers.append((WarcRecord.URL, url))
+        
+    record=WarcRecord(headers=headers, content=content)
+
+    return record
+
 
 
 def warc_datetime_str(d):

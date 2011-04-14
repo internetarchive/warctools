@@ -1,0 +1,9 @@
+syntax: glob
+*.swp
+*.log
+*.pyc
+*.pyo
+*.warc
+*.gz
+login.txt
+.DS_Store
