@@ -12,10 +12,12 @@ bad_lines = 5 # when to give up looking for the version stamp
     TYPE = 'WARC-Type',
     ID = 'WARC-Record-ID',
     CONCURRENT_TO = 'WARC-Concurrent-To',
+    REFERS_TO = 'WARC-Refers-To',
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
     URL='WARC-Target-URI',
     BLOCK_DIGEST='WARC-Block-Digest',
+    IP_ADDRESS='WARC-IP-Address',
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
@@ -350,15 +352,15 @@ def make_metadata(meta_id, date, content, concurrent_to=None, url=None):
     return record
 
 
-def make_conversion(conv_id, date, content, concurrent_to=None, url=None):
+def make_conversion(conv_id, date, content, refers_to=None, url=None):
     headers = [
             (WarcRecord.TYPE, WarcRecord.CONVERSION),
             (WarcRecord.ID, conv_id),
             (WarcRecord.DATE, date),
 
     ]
-    if concurrent_to:
-        headers.append((WarcRecord.CONCURRENT_TO, concurrent_to))
+    if refers_to:
+        headers.append((WarcRecord.REFERS_TO, refers_to))
 
     if url:
         headers.append((WarcRecord.URL, url))
