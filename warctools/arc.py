@@ -61,7 +61,7 @@ class ArcParser(ArchiveParser):
         content_type = None
         content_length = None
         header_line = stream.readline()
-        if not header_line:
+        if not header_line.rstrip():
             return (None,())
 
 

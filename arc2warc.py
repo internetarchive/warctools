@@ -28,6 +28,8 @@ def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
     out = sys.stdout
+    if options.output:
+        out = open(options.output, 'ab')
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         

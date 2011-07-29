@@ -27,7 +27,7 @@ def main(argv):
         parser.error("no imput warc file(s)")
         
 
-    correct=False
+    correct=True
     fh=None
     try:
         for name in input_files:
@@ -35,10 +35,17 @@ def main(argv):
 
             for (offset, record, errors) in fh.read_records(limit=None):
                 if errors:
-            #        print "warc errors at %s:%d"%(name, offset)
+                    print  >> sys.stderr, "warc errors at %s:%d"%(name, offset)
+                    print >> sys.stderr,  errors
+                    correct=False
+
                     break
-                elif record is None and not errors :
-                    correct=True
+                elif record is not None and record.validate(): # ugh name, returns errorsa
+                    print  >> sys.stderr, "warc errors at %s:%d"%(name, offset)
+                    print >> sys.stderr, record.validate()
+                    correct=False
+                    break
+                
 
     except StandardError, e:
         correct=False
