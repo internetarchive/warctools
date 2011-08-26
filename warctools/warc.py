@@ -302,7 +302,9 @@ class WarcParser(ArchiveParser):
 
                     
             
+blank_rx = rx(r'^$')
 register_record_type(version_rx, WarcRecord)
+register_record_type(blank_rx, WarcRecord)
 
 def make_response(id, date, url, content, request_id):
     headers = [
