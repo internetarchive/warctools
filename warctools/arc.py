@@ -56,13 +56,13 @@ class ArcParser(ArchiveParser):
         self.headers = []
         self.trailing_newlines = 0
 
-    def parse(self, stream):
+    def parse(self, stream, offset):
         record = None
         content_type = None
         content_length = None
         header_line = stream.readline()
         if not header_line.rstrip():
-            return (None,())
+            return (None,(), offset)
 
 
         if not self.version:
@@ -125,7 +125,7 @@ class ArcParser(ArchiveParser):
             record.error('trailing data at end of record', line)
         self.trailing_newlines = 1
 
-        return (record, ())
+        return (record, (), offset)
 
     def trim(self, stream):
         return ()

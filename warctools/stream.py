@@ -83,7 +83,7 @@ class RecordStream(object):
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
         offset = self.fh.tell() if offsets else None
-        record, errors= self.record_parser.parse(self.fh)
+        record, errors, offset = self.record_parser.parse(self.fh, offset)
         return offset, record, errors
 
     def write(self, record):
@@ -103,7 +103,7 @@ class GzipRecordStream(RecordStream):
         if self.gz is not None:
             # we have an open record, so try for a record at the end
             # at best will read trailing newlines at end of last record
-            record, r_errors = self.record_parser.parse(self.gz)
+            record, r_errors, _offset = self.record_parser.parse(self.gz, offset=None)
             if record:
                 record.error('multiple warc records in gzip record file') 
                 return None, record, errors
@@ -113,7 +113,7 @@ class GzipRecordStream(RecordStream):
 
         offset = self.fh.tell() if offsets else None
         self.gz = GzipRecordFile(self.fh)
-        record, r_errors= self.record_parser.parse(self.gz)
+        record, r_errors, _offset = self.record_parser.parse(self.gz, offset=None)
         errors.extend(r_errors)
         return offset, record, errors
                 

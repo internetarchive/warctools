@@ -117,7 +117,7 @@ class WarcParser(ArchiveParser):
     def __init__(self):
         self.trailing_newlines = 0
 
-    def parse(self,stream):
+    def parse(self,stream, offset):
         """Reads a warc record from the stream, returns a tuple (record, errors). 
         Either records is null or errors is null. Any record-specific errors are 
         contained in the record - errors is only used when *nothing* could be parsed"""
@@ -152,13 +152,13 @@ class WarcParser(ArchiveParser):
                 errors.append(('ignored line', line)) 
                 if len(errors) > bad_lines:
                     errors.append(('too many errors, giving up hope',))
-                    return (None,errors)  
+                    return (None,errors, offset)  
             line = stream.readline()
         if not line:
             if version:
                 errors.append('warc version but no headers', version)
             self.trailing_newlines = 0
-            return (None, errors)
+            return (None, errors, offset)
         if line:
             content_length = 0
             content_type = None
@@ -270,7 +270,7 @@ class WarcParser(ArchiveParser):
 
 
 
-            return (record, ())
+            return (record, (), offset)
 
     def trim(self, stream):
         """read the end of the file"""
