@@ -130,6 +130,7 @@ class WarcParser(ArchiveParser):
             while line:
                 match = nl_rx.match(line)
                 if match and newlines > 0:
+                    if offset is not None: offset+=len(line)
                     newlines-=1
                     if match.group('nl') != '\x0d\x0a':
                         errors.append(('incorrect trailing newline', match.group('nl')))
@@ -145,15 +146,18 @@ class WarcParser(ArchiveParser):
         while line:
             match = version_rx.match(line)
 
-            if match or not line:
+            if match:
                 version = match.group('version')
+                if offset is not None: offset+=len(match.group('prefix'))
                 break
-            elif not nl_rx.match(line):
-                errors.append(('ignored line', line)) 
-                if len(errors) > bad_lines:
-                    errors.append(('too many errors, giving up hope',))
-                    return (None,errors, offset)  
-            line = stream.readline()
+            else:
+                if offset is not None: offset+=len(line)
+                if not nl_rx.match(line):
+                    errors.append(('ignored line', line)) 
+                    if len(errors) > bad_lines:
+                        errors.append(('too many errors, giving up hope',))
+                        return (None,errors, offset)  
+                line = stream.readline()
         if not line:
             if version:
                 errors.append('warc version but no headers', version)
