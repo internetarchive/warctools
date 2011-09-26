@@ -2,9 +2,9 @@
 
 import re
 
-from warctools.record import ArchiveRecord,ArchiveParser
-from warctools.stream import open_record_stream
-from warctools.archive_detect import register_record_type
+from .record import ArchiveRecord,ArchiveParser
+from .stream import open_record_stream
+from .archive_detect import register_record_type
 
 # URL<sp>IP-address<sp>Archive-date<sp>Content-type<sp>
 #Result-code<sp>Checksum<sp>Location<sp> Offset<sp>Filename<sp>

@@ -4,8 +4,8 @@ import zlib
 import gzip
 import re
 
-from warctools.log import debug
-from warctools.archive_detect import is_gzip_file, guess_record_type
+from .log import debug
+from .archive_detect import is_gzip_file, guess_record_type
 
 def open_record_stream(record_class=None, filename=None, file_handle=None, mode="rb+", gzip="auto"):
         """Can take a filename or a file_handle. Normally called indirectly from

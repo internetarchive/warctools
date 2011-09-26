@@ -2,8 +2,8 @@
 
 import re
 import hashlib
-from warctools.record import ArchiveRecord,ArchiveParser
-from warctools.archive_detect import register_record_type
+from .record import ArchiveRecord,ArchiveParser
+from .archive_detect import register_record_type
 
 bad_lines = 5 # when to give up looking for the version stamp
 

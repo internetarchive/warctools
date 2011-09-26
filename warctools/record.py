@@ -3,7 +3,7 @@
 from gzip import GzipFile
 import re
 
-from warctools.stream import open_record_stream
+from .stream import open_record_stream
 
 strip = re.compile(r'[^\w\t \|\\\/]')
 
