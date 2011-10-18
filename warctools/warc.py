@@ -21,6 +21,7 @@ bad_lines = 5 # when to give up looking for the version stamp
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
+    KNOWN_VERSIONS=set(('1.0', '0.16', '0.17')) 
     RESPONSE="response"
     REQUEST="request"
     METADATA="metadata"
@@ -173,8 +174,8 @@ class WarcParser(ArchiveParser):
             if match.group('nl') != '\x0d\x0a':
                 record.error('incorrect newline in version', match.group('nl'))
 
-            if match.group('number') != '1.0':
-                record.error('version field is not "1.0"', match.group('number'))
+            if match.group('number') not in self.KNOWN_VERSIONS:
+                record.error('version field is not known (%s)'%(",".join(self.KNOWN_VERSIONS)), match.group('number'))
 
 
             prefix = match.group('prefix')
