@@ -8,7 +8,7 @@ import re
 
 from optparse import OptionParser
 
-from warctools import ArchiveRecord
+from hanzo.warctools import ArchiveRecord
 
 parser = OptionParser(usage="%prog [options] pattern warc warc warc")
 

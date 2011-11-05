@@ -12,7 +12,7 @@ import os.path
 
 from optparse import OptionParser
 
-from warctools import ArcRecord,WarcRecord
+from hanzo.warctools import ArcRecord,WarcRecord
 
 parser = OptionParser(usage="%prog [options] arc (arc ...)")
 

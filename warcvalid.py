@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from warctools import ArchiveRecord
+from hanzo.warctools import ArchiveRecord
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 

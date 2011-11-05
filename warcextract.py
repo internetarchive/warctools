@@ -10,7 +10,7 @@ import os.path
 from optparse import OptionParser
 from contextlib import closing
 
-from warctools import ArchiveRecord, WarcRecord
+from hanzo.warctools import ArchiveRecord, WarcRecord
 
 parser = OptionParser(usage="%prog [options] warc offset")
 

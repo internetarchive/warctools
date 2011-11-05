@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from warctools import WarcRecord
+from hanzo.warctools import WarcRecord
 
 parser = OptionParser(usage="%prog [options] url (url ...)")
 
