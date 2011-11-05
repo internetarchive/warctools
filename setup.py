@@ -2,7 +2,7 @@
 
 import glob 
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='hanzo-warc-tools',
       version='0.1',
