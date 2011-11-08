@@ -21,6 +21,8 @@ bad_lines = 5 # when to give up looking for the version stamp
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
+    VERSION17="WARC/0.17"
+    VERSION16="WARC/0.16"
     RESPONSE="response"
     REQUEST="request"
     METADATA="metadata"

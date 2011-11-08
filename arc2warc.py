@@ -51,7 +51,7 @@ def main(argv):
             if date:
                 headers.append((WarcRecord.DATE,date))
             
-            warcrecord = WarcRecord(headers=headers, content=content, version=version)
+            warcrecord = WarcRecord(headers=headers, content="application/http;msgtype=response", version=version)
 
             warcrecord.write_to(out, gzip=options.gzip)
 
