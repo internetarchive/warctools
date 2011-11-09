@@ -21,12 +21,13 @@ bad_lines = 5 # when to give up looking for the version stamp
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
+    VERSION18="WARC/0.18"
     VERSION17="WARC/0.17"
-    VERSION16="WARC/0.16"
     RESPONSE="response"
     REQUEST="request"
     METADATA="metadata"
     CONVERSION="conversion"
+    WARCINFO="warcinfo"
 
     def __init__(self, version=VERSION, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self,headers,content,errors) 
@@ -116,7 +117,7 @@ required_headers = set((
 ))
 
 class WarcParser(ArchiveParser):
-    KNOWN_VERSIONS=set(('1.0', '0.16', '0.17')) 
+    KNOWN_VERSIONS=set(('1.0', '0.17', '0.18')) 
     def __init__(self):
         self.trailing_newlines = 0
 

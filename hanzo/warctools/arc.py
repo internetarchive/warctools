@@ -1,5 +1,6 @@
 """An object to represent arc records"""
 
+import sys
 import re
 
 from .record import ArchiveRecord,ArchiveParser
@@ -42,6 +43,9 @@ class ArcRecordHeader(ArcRecord):
     def __init__(self, headers=None, content=None, errors=None, version=None):
         ArcRecord.__init__(self,headers,content,errors) 
         self.version = version
+    @property
+    def type(self):
+        return "filedesc"
 
 def rx(pat):
     return re.compile(pat,flags=re.IGNORECASE)
@@ -60,12 +64,16 @@ class ArcParser(ArchiveParser):
         record = None
         content_type = None
         content_length = None
-        header_line = stream.readline()
-        if not header_line.rstrip():
-            return (None,(), offset)
+        line = stream.readline()
+
+        while not line.rstrip():
+            if not line:
+                return (None,(), offset)
+            self.trailing_newlines-=1
+            line = stream.readline()
 
 
-        if not self.version:
+        if line.startswith('filedesc:'):
             arc_version_line = stream.readline()
             arc_names_line = stream.readline()
 
@@ -75,8 +83,8 @@ class ArcParser(ArchiveParser):
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
         
-            # read headers
-            arc_headers = self.get_header_list(header_line.strip().split())
+            # read headers 
+            arc_headers = self.get_header_list(line.strip().split())
             
             # extract content, ignoring header lines parsed already
             content_type, content_length, errors = self.get_content_headers(arc_headers)
@@ -86,20 +94,7 @@ class ArcParser(ArchiveParser):
             record = ArcRecordHeader(headers = arc_headers, version=arc_version, errors=errors)
 
         else:
-            newlines = self.trailing_newlines
-            if newlines > 0:
-                while header_line:
-                    match = nl_rx.match(header_line)
-                    if match and newlines > 0:
-                        newlines-=1
-                        header_line = stream.readline()
-                        if newlines == 0:
-                            break
-                    else:
-                        break
-                    
-
-            headers = self.get_header_list(header_line.strip().split())
+            headers = self.get_header_list(line.strip().split())
             content_type, content_length, errors = self.get_content_headers(headers)
 
             record = ArcRecord(headers = headers, errors=errors)
@@ -123,7 +118,8 @@ class ArcParser(ArchiveParser):
 
         if line:
             record.error('trailing data at end of record', line)
-        self.trailing_newlines = 1
+        if  line == '':
+            self.trailing_newlines = 1
 
         return (record, (), offset)
 

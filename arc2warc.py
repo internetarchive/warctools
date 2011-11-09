@@ -8,11 +8,13 @@ import uuid
 
 import sys
 import os.path
+import datetime
 
 
 from optparse import OptionParser
 
 from hanzo.warctools import ArcRecord,WarcRecord
+from hanzo.warctools.warc import warc_datetime_str
 
 parser = OptionParser(usage="%prog [options] arc (arc ...)")
 
@@ -36,10 +38,25 @@ def main(argv):
     for name in input_files:
         fh = ArcRecord.open_archive(name, gzip="auto")
 
+        filedesc = None
         for record in fh:
-            content = record.content
+
+            # todo :convert filedesc record to warcinfo record
+            #       add arc filename to warcinfo record, from filedesc
+            #       add warc conversion record with original filedesc
+
+            #       add warcinfo field to every warc after a warcinfo record
+            #       i.e. deal with concatted arc files
+            #       documentation, options
+
+            # corrent content types - http for urlsinherit content-type for everything else?
+
+            content_type, content  = record.content
+
+            if record.url.startswith('http'):
+                content_type="application/http;msgtype=response"
             headers = [
-                (WarcRecord.TYPE, "response"),
+                (WarcRecord.TYPE, WarcRecord.METADATA if record.type == 'filedesc' else WarcRecord.RESPONSE ),
                 (WarcRecord.ID, "<urn:uuid:%s>"%uuid.UUID(hashlib.sha1(record.url+record.date).hexdigest()[0:32])),
             ]
             version = "WARC/1.0"
@@ -49,9 +66,10 @@ def main(argv):
                 headers.append((WarcRecord.URL,url))
             date = record.date
             if date:
-                headers.append((WarcRecord.DATE,date))
+                date = datetime.datetime.strptime(date,'%Y%m%d%H%M%S')
+                headers.append((WarcRecord.DATE, warc_datetime_str(date)))
             
-            warcrecord = WarcRecord(headers=headers, content="application/http;msgtype=response", version=version)
+            warcrecord = WarcRecord(headers=headers, content=(content_type, content), version=version)
 
             warcrecord.write_to(out, gzip=options.gzip)
 
