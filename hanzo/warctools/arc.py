@@ -57,6 +57,14 @@ type_rx = rx('^'+ArcRecord.CONTENT_TYPE+'$')
 class ArcParser(ArchiveParser):
     def __init__(self):
         self.version = 0
+        # we don't know which version to parse initially - a v1 or v2 file
+        # so we read the filedesc because the order and number of the headers change
+        # between versions.
+
+        # question? will we get arc fragments?
+        # should we store both headers & detect records by header length?
+        # if we don't know 
+
         self.headers = []
         self.trailing_newlines = 0
 
@@ -74,6 +82,8 @@ class ArcParser(ArchiveParser):
 
 
         if line.startswith('filedesc:'):
+            # read headers named in body of record
+            # to assign names to header, to read body of record
             arc_version_line = stream.readline()
             arc_names_line = stream.readline()
 
@@ -82,6 +92,12 @@ class ArcParser(ArchiveParser):
             # configure parser instance
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
+            
+            # now we have read header field in record body
+            # we can extract the headers from the current record,
+            # and read the length field
+
+            # which is in a different place with v1 and v2
         
             # read headers 
             arc_headers = self.get_header_list(line.strip().split())
@@ -94,6 +110,8 @@ class ArcParser(ArchiveParser):
             record = ArcRecordHeader(headers = arc_headers, version=arc_version, errors=errors)
 
         else:
+            if not self.headers:
+                raise StandardHeader('missing filedesc')
             headers = self.get_header_list(line.strip().split())
             content_type, content_length, errors = self.get_content_headers(headers)
 
