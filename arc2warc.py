@@ -34,6 +34,8 @@ def main(argv):
     out = sys.stdout
     if options.output:
         out = open(options.output, 'ab')
+        if options.output.endswith('.gz'):
+            options.gzip = True
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         
@@ -81,6 +83,7 @@ def main(argv):
                 warcrecord = WarcRecord(headers=warcmeta_headers, content=warcmeta_content, version=version)
                 warcrecord.write_to(out, gzip=options.gzip)
             else:
+                content_type, content = record.content
                 if record.url.startswith('http'):
                     # don't promote content-types for http urls,
                     # they contain headers in the body.
