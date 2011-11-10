@@ -18,6 +18,8 @@ bad_lines = 5 # when to give up looking for the version stamp
     URL='WARC-Target-URI',
     BLOCK_DIGEST='WARC-Block-Digest',
     IP_ADDRESS='WARC-IP-Address',
+    FILENAME='WARC-Filename',
+    WARCINFO_ID='WARC-Warcinfo-ID',
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"

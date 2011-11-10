@@ -40,12 +40,15 @@ class ArcRecord(ArchiveRecord):
 
 
 class ArcRecordHeader(ArcRecord):
-    def __init__(self, headers=None, content=None, errors=None, version=None):
+    def __init__(self, headers=None, content=None, errors=None, version=None, raw_headers=None):
         ArcRecord.__init__(self,headers,content,errors) 
         self.version = version
+        self.raw_headers = raw_headers
     @property
     def type(self):
         return "filedesc"
+    def raw(self):
+        return "".join(self.raw_headers) + self.content[1]
 
 def rx(pat):
     return re.compile(pat,flags=re.IGNORECASE)
@@ -73,7 +76,6 @@ class ArcParser(ArchiveParser):
         content_type = None
         content_length = None
         line = stream.readline()
-
         while not line.rstrip():
             if not line:
                 return (None,(), offset)
@@ -82,10 +84,14 @@ class ArcParser(ArchiveParser):
 
 
         if line.startswith('filedesc:'):
+            raw_headers = []
+            raw_headers.append(line)
             # read headers named in body of record
             # to assign names to header, to read body of record
             arc_version_line = stream.readline()
+            raw_headers.append(arc_version_line)
             arc_names_line = stream.readline()
+            raw_headers.append(arc_names_line)
 
             arc_version=arc_version_line.strip()
 
@@ -107,7 +113,7 @@ class ArcParser(ArchiveParser):
 
             content_length = content_length - len(arc_version_line) - len(arc_names_line)
 
-            record = ArcRecordHeader(headers = arc_headers, version=arc_version, errors=errors)
+            record = ArcRecordHeader(headers = arc_headers, version=arc_version, errors=errors, raw_headers=raw_headers)
 
         else:
             if not self.headers:
