@@ -187,6 +187,7 @@ class HTTPHeader(object):
         self.content_length = None
         self.encoding = None
         self.trailers = []
+        self.expect_continue=True
 
     def has_body(self):
         pass
@@ -223,6 +224,9 @@ class HTTPHeader(object):
 
                 # todo handle multiple instances
                 # of these headers
+                if name == 'expect':
+                    if '100-continue' in value:
+                        self.expect_continue = True
                 if name == 'content-length':
                     if self.mode == 'close':
                         self.content_length = int(value)
@@ -309,6 +313,9 @@ class ResponseParser(HTTPParser):
     def __init__(self, buffer, request_header):
         self.interim = []
         HTTPParser.__init__(self, buffer, ResponseHeader(request_header))
+
+    def got_continue(self):
+        return bool(self.interim)
 
     def feed(self, text):
         text = HTTPParser.feed(self, text)
