@@ -19,17 +19,18 @@ class Methods(object):
     cacheable = (GET,) 
 
 
-def discriminator(func):
-    class Discriminator(object):
+def range_collection(func):
+    """Returns an object (x) that responds to foo in x,"""
+    class Range(object):
         def __contains__(self, item):
             return func(item)
-    return Discriminator()
+    return Range()
                 
 class Codes(object):
     Continue = 100
     switching_protocols = 101
 
-    @discriminator
+    @range_collection
     def informational(code):
         return 100 <= code < 200
 
@@ -41,7 +42,7 @@ class Codes(object):
     reset_content = 205
     partial_content = 206
 
-    @discriminator
+    @range_collection
     def successful(code):
         return 200 <= code < 300
 
@@ -54,7 +55,7 @@ class Codes(object):
     obsolete_switch_proxy = 306
     temporary_redirect = 307
 
-    @discriminator
+    @range_collection
     def redirection(code):
         return 300 <= code < 400
 
@@ -79,7 +80,7 @@ class Codes(object):
     expectation_failed = 417
     upgrade_required = 426
 
-    @discriminator
+    @range_collection
     def client_error(code):
         return 400 <= code < 500
 
@@ -90,11 +91,11 @@ class Codes(object):
     service_unavailable = 503
     gateway_timeout = 504
     http_version_not_supported = 505
-    @discriminator
+    @range_collection
     def server_error(code):
         return 500 <= code < 600
 
-    @discriminator
+    @range_collection
     def no_body(code):
         return (100 <= code < 200) or (code == 204) or (code == 304)
 
