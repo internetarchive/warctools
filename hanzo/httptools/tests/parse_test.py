@@ -95,7 +95,6 @@ post_response = "\r\n".join( [
     "HTTP/1.1 100 Continue",
     "Host: example.org",
     "",
-    "",
     "HTTP/1.0 204 No Content",
     "Date: now!",
     "",
@@ -103,15 +102,13 @@ post_response = "\r\n".join( [
 ])
 
 
-class HeadTest(unittest2.TestCase):
+class PostTest(unittest2.TestCase):
 
     def runTest(self):
         print repr(post_request)
         buffer = StringIO()
         p = RequestParser(buffer)
         text = p.feed(post_request)
-
-        print p.mode
 
         self.assertEqual(text, '')
         self.assertEqual(post_request, buffer.getvalue())

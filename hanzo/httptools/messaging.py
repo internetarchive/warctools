@@ -130,29 +130,29 @@ class ChunkReader(object):
     def feed(self, parser, text):
         while text:
             if self.mode == 'start':
-                print self.mode, repr(text)
+                #print self.mode, repr(text)
                 
                 line, text = parser.feed_line(text)
                 if line is not None:
-                    chunk = int(line.split(';',2)[0], 16)
+                    chunk = int(line.split(';',1)[0], 16)
                     self.remaining = chunk
                     if chunk == 0:
                         self.mode = 'trailer'
                     else:
                         self.mode = 'chunk'
-                print self.mode, repr(text)
+                #print self.mode, repr(text)
 
             if text and self.mode == 'chunk':
-                print self.mode, repr(text), self.remaining
+                #print self.mode, repr(text), self.remaining
                 if self.remaining > 0: 
                     self.remaining, text = parser.feed_length(text, self.remaining)
                 if self.remaining == 0:
                     end_of_chunk, text = parser.feed_line(text)
-                    print 'end',end_of_chunk
+                    #print 'end',end_of_chunk
                     if end_of_chunk:
-                        print 'ended'
+                        #print 'ended'
                         self.mode = 'start'
-                print self.mode, repr(text)
+                #print self.mode, repr(text)
 
             if text and self.mode == 'trailer':
                 line, text = parser.feed_line(text)
@@ -203,7 +203,7 @@ class HTTPHeader(object):
         elif line == '\r\n':
             pass
         else:
-            name, value = line.split(':',2)
+            name, value = line.split(':',1)
             name = name.strip()
             value = value.strip()
             self.trailers.append((name, value))
@@ -246,7 +246,7 @@ class HTTPHeader(object):
 
         else:
             #print line
-            name, value = line.split(':',2)
+            name, value = line.split(':',1)
             name = name.strip()
             value = value.strip()
             self.headers.append((name, value))
@@ -266,7 +266,7 @@ class RequestHeader(HTTPHeader):
         self.version = ''
 
     def set_start_line(self, line):
-        self.method, self.target_uri, self.version = line.rstrip().split(' ',3)
+        self.method, self.target_uri, self.version = line.rstrip().split(' ',2)
         if self.version =='HTTP/1.0':
             self.keep_alive = False
 
@@ -282,7 +282,7 @@ class ResponseHeader(HTTPHeader):
         self.phrase = None
 
     def set_start_line(self, line):
-        self.version, self.code, self.phrase = line.rstrip().split(' ',3)
+        self.version, self.code, self.phrase = line.rstrip().split(' ',2)
         self.code = int(self.code)
         if self.version =='HTTP/1.0':
             self.keep_alive = False
@@ -312,7 +312,6 @@ class ResponseParser(HTTPParser):
 
     def feed(self, text):
         text = HTTPParser.feed(self, text)
-        print text, self.header.code,
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
