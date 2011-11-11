@@ -14,14 +14,21 @@ from .semantics import Codes, Methods
 
 CRLF = '\r\n'
 
+"""
+Missing:
+    Parsing Trailing Headers as part of the request
+    comma parsing/header folding
+
+"""
+
 class HTTPParser(object):
     """A stream based parser for http like messages"""
     def __init__(self, buffer, header):
         self.buffer = buffer
         self.offset = self.buffer.tell()
-        self.body_offset = -1
         self.header = header
         
+        self.body_offset = -1
         self.mode = 'start'
         self.body_reader = None
 
@@ -32,23 +39,22 @@ class HTTPParser(object):
         if text and self.mode == 'headers':
            text = self.feed_headers(text)
            if self.mode == 'body':
-                self.body_offset = self.offset
                 if not self.header.has_body():
                     self.mode = 'end'
-                if self.header.body_is_chunked():
-                    self.body_reader = ChunkedReader()
                 else:
-                    len = self.header.body_length()
-                    if len is not None:
-                        self.body_reader = LengthReader(len)
+                    self.body_offset = self.offset
+                    if self.header.body_is_chunked():
+                        self.body_reader = ChunkReader()
                     else:
-                        self.body_reader = None
+                        len = self.header.body_length()
+                        if len is not None:
+                            self.body_reader = LengthReader(len)
+                        else:
+                            self.body_reader = None
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
                  text = self.body_reader.feed(self, text)
-                 if text:
-                    self.mode = 'end'
             else:
                 self.buffer.write(text)
                 text = ''
@@ -62,17 +68,20 @@ class HTTPParser(object):
         elif self.mode != 'end':
             self.mode = 'incomplete'
 
-    def complete():
-        self.mode =='end'
+
+    def headers_complete(self):
+        return self.mode in ('end', 'body')
+
+    def complete(self):
+        return self.mode =='end'
 
     def feed_line(self, text):
         """ feed text into the buffer, returning the first line found (if found yet)"""
-        print 'feed line', repr(text)
+        #print 'feed line', repr(text)
         line = None
         nl= text.find(CRLF)
         if nl > -1:
             nl+=2
-            print nl
             self.buffer.write(text[:nl])
             self.buffer.seek(self.offset)
             line = self.buffer.readline()
@@ -81,7 +90,7 @@ class HTTPParser(object):
         else:
             self.buffer.write(text)
             text = ''
-        print 'feed line', repr(line), repr(text)
+        #print 'feed line', repr(line), repr(text)
         return line, text
 
     def feed_length(self, text, remaining):
@@ -121,27 +130,39 @@ class ChunkReader(object):
     def feed(self, parser, text):
         while text:
             if self.mode == 'start':
-                line, text = self.feed_line(text)
+                print self.mode, repr(text)
+                
+                line, text = parser.feed_line(text)
                 if line is not None:
                     chunk = int(line.split(';',2)[0], 16)
+                    self.remaining = chunk
                     if chunk == 0:
                         self.mode = 'trailer'
                     else:
                         self.mode = 'chunk'
+                print self.mode, repr(text)
 
             if text and self.mode == 'chunk':
+                print self.mode, repr(text), self.remaining
                 if self.remaining > 0: 
-                    self.remaining, text = self.feed_length(text, self.remaining)
+                    self.remaining, text = parser.feed_length(text, self.remaining)
                 if self.remaining == 0:
-                    self.mode == 'start'
+                    end_of_chunk, text = parser.feed_line(text)
+                    print 'end',end_of_chunk
+                    if end_of_chunk:
+                        print 'ended'
+                        self.mode = 'start'
+                print self.mode, repr(text)
 
             if text and self.mode == 'trailer':
-                line, text = self.feed_line(text)
+                line, text = parser.feed_line(text)
                 if line is not None:
+                    parser.header.add_trailer(line)
                     if line == CRLF:
-                        self.mode == 'end'
+                        self.mode = 'end'
 
-            if text and self.mode == 'end':
+            if self.mode == 'end':
+                parser.mode ='end'
                 break
 
         return text
@@ -153,6 +174,8 @@ class LengthReader(object):
     def feed(self, parser, text):
         if self.remaining > 0: 
             self.remaining, text = parser.feed_length(text, self.remaining)
+        if self.remaining <= 0:
+            parser.mode ='end'
         return text
             
 
@@ -163,6 +186,7 @@ class HTTPHeader(object):
         self.mode = 'close'
         self.content_length = None
         self.encoding = None
+        self.trailers = []
 
     def has_body(self):
         pass
@@ -170,6 +194,20 @@ class HTTPHeader(object):
     def set_start_line(self, line):
         pass
 
+    def add_trailer(self, line):
+        if line.startswith(' ') or line.startswith('\t'):
+            k,v = self.trailers.pop()
+            line = line.strip()
+            v = "%s %s"%(v, line)
+            self.trailers.append((k,v))
+        elif line == '\r\n':
+            pass
+        else:
+            name, value = line.split(':',2)
+            name = name.strip()
+            value = value.strip()
+            self.trailers.append((name, value))
+        
     def add_header(self, line):
         if line.startswith(' ') or line.startswith('\t'):
             k,v = self.headers.pop()
@@ -177,10 +215,11 @@ class HTTPHeader(object):
             v = "%s %s"%(v, line)
             self.headers.append((k,v))
         
-        if line == '\r\n':
+        elif line == '\r\n':
             for name, value in self.headers:
                 name = name.lower()
                 value = value.lower()
+
 
                 # todo handle multiple instances
                 # of these headers
@@ -191,7 +230,7 @@ class HTTPHeader(object):
                         
                 if name == 'transfer-encoding':
                     if 'chunked' in value:
-                        self.mode == 'chunked'
+                        self.mode = 'chunked'
 
                 if name == 'content-encoding':
                     self.encoding = value
@@ -206,7 +245,7 @@ class HTTPHeader(object):
                 self.keep_alive = False
 
         else:
-            print line
+            #print line
             name, value = line.split(':',2)
             name = name.strip()
             value = value.strip()
@@ -244,6 +283,7 @@ class ResponseHeader(HTTPHeader):
 
     def set_start_line(self, line):
         self.version, self.code, self.phrase = line.rstrip().split(' ',3)
+        self.code = int(self.code)
         if self.version =='HTTP/1.0':
             self.keep_alive = False
 
@@ -267,4 +307,17 @@ class RequestParser(HTTPParser):
 
 class ResponseParser(HTTPParser):
     def __init__(self, buffer, request_header):
+        self.interim = []
         HTTPParser.__init__(self, buffer, ResponseHeader(request_header))
+
+    def feed(self, text):
+        text = HTTPParser.feed(self, text)
+        if self.complete() and self.header.code == Codes.Continue:
+            self.interim.append(self.header)
+            self.header = ResponseHeader(self.header.request)
+            self.body_offset = -1
+            self.mode = 'start'
+            self.body_reader = None
+            text = HTTPParser.feed(self, text)
+        return text
+            
