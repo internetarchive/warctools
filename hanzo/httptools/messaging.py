@@ -312,6 +312,7 @@ class ResponseParser(HTTPParser):
 
     def feed(self, text):
         text = HTTPParser.feed(self, text)
+        print text, self.header.code,
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
