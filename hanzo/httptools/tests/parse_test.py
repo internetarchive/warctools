@@ -16,7 +16,7 @@ get_response = "\r\n".join( [
     "Host: example.org",
     "Content-Length:5",
     "",
-    "butts",
+    "tests",
 ])
 
 
