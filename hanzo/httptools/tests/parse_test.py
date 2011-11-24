@@ -33,7 +33,7 @@ class GetTest(unittest2.TestCase):
         self.assertTrue(p.complete())
 
 
-        self.assertEqual(get_request, p.get_canonicalized_message())
+        self.assertEqual(get_request, p.get_decoded_message())
         print repr(get_response)
         
         buffer = StringIO()
@@ -43,7 +43,7 @@ class GetTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(get_response, buffer.getvalue())
         self.assertTrue(p.complete())
-        self.assertEqual(get_response, p.get_canonicalized_message())
+        self.assertEqual(get_response, p.get_decoded_message())
 
 head_request = "\r\n".join( [
     "HEAD / HTTP/1.1",
@@ -71,7 +71,7 @@ class HeadTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(head_request, buffer.getvalue())
         self.assertTrue(p.complete())
-        self.assertEqual(head_request, p.get_canonicalized_message())
+        self.assertEqual(head_request, p.get_decoded_message())
 
         print repr(head_response)
 
@@ -83,7 +83,7 @@ class HeadTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(head_response, buffer.getvalue())
         self.assertTrue(p.complete())
-        self.assertEqual(head_response, p.get_canonicalized_message())
+        self.assertEqual(head_response, p.get_decoded_message())
 
 post_request = "\r\n".join( [
     "POST / HTTP/1.1",

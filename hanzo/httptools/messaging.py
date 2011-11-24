@@ -5,6 +5,7 @@ http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-17
 
 Unlike other libraries, this is for clients, servers and proxies.
 """
+import re
 
 from StringIO import StringIO
 class ParseError(StandardError):
@@ -20,10 +21,8 @@ Missing:
 
 """
 
-# todo HTTPMessage -> HTTPMessage
-
-
 class HTTPMessage(object):
+    CONTENT_TYPE="application/http"
     """A stream based parser for http like messages"""
     def __init__(self, buffer, header):
         self.buffer = buffer
@@ -131,28 +130,28 @@ class HTTPMessage(object):
         while text:
             line, text = self.feed_line(text)
             if line is not None:
-                self.header.add_header(line)
+                self.header.add_header_line(line)
                 if line == CRLF:
                     self.mode = 'body'
                     break
 
         return text
 
-    def get_canonicalized_message(self):
+    def get_decoded_message(self):
         buf = StringIO()
-        self.write_canonicalized_message(buf)
+        self.write_decoded_message(buf)
         return buf.getvalue()
 
-    def write_canonicalized_message(self, buf):
-        self.header.write_canonicalized(buf)
+    def write_decoded_message(self, buf):
+        self.header.write_decoded(buf)
         if self.header.has_body():
             length = sum(l for o,l in self.body_chunks)
             buf.write('Content-Length: %d\r\n'%length)
         buf.write('\r\n')
-        self.write_canonicalized_body(buf)
+        self.write_decoded_body(buf)
 
 
-    def write_canonicalized_body(self, buf):
+    def write_decoded_body(self, buf):
         current = self.buffer.tell()
         for offset, length in self.body_chunks:
             self.buffer.seek(offset)
@@ -197,7 +196,7 @@ class ChunkReader(object):
             if text and self.mode == 'trailer':
                 line, text = parser.feed_line(text)
                 if line is not None:
-                    parser.header.add_trailer(line)
+                    parser.header.add_trailer_line(line)
                     if line == CRLF:
                         self.mode = 'end'
 
@@ -223,7 +222,7 @@ class HTTPHeader(object):
     STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding', 'TE', 'Expect', 'Trailer')
     def __init__(self):
         self.headers = []
-        self.keep_alive = True
+        self.keep_alive = False
         self.mode = 'close'
         self.content_length = None
         self.encoding = None
@@ -236,24 +235,23 @@ class HTTPHeader(object):
     def set_start_line(self, line):
         pass
 
+    def write_decoded(self, buf):
+        self.write_decoded_start(buf)
+        strip_headers = self.STRIP_HEADERS if self.has_body() else ()
+        self.write_headers(buf, strip_headers)
 
-    def write_canonicalized(self, buf):
-        self.write_canonicalized_start(buf)
-        self.write_canonicalized_headers(buf)
-
-    def write_canonicalized_start(self, buf):
+    def write_decoded_start(self, buf):
         pass
 
-    def write_canonicalized_headers(self, buf):
-        strip = self.STRIP_HEADERS if self.has_body() else ()
+    def write_headers(self, buf, strip_headers=()):
         for k,v in self.headers:
-            if k not in strip:
+            if k not in strip_headers:
                 buf.write('%s: %s\r\n'%(k,v))
         for k,v in self.trailers:
-            if k not in strip:
+            if k not in strip_headers:
                 buf.write('%s: %s\r\n'%(k,v))
 
-    def add_trailer(self, line):
+    def add_trailer_line(self, line):
         if line.startswith(' ') or line.startswith('\t'):
             k,v = self.trailers.pop()
             line = line.strip()
@@ -266,20 +264,23 @@ class HTTPHeader(object):
             name = name.strip()
             value = value.strip()
             self.trailers.append((name, value))
+
+    def add_header(self, name, value):
+        self.headers.append((name, value))
         
-    def add_header(self, line):
+    def add_header_line(self, line):
         if line.startswith(' ') or line.startswith('\t'):
             k,v = self.headers.pop()
             line = line.strip()
             v = "%s %s"%(v, line)
-            self.headers.append((k,v))
+            self.add_header(k, v)
         
         elif line == '\r\n':
             for name, value in self.headers:
                 name = name.lower()
                 value = value.lower()
 
-
+                
                 # todo handle multiple instances
                 # of these headers
                 if name == 'expect':
@@ -303,15 +304,13 @@ class HTTPHeader(object):
                     elif 'close' in value:
                         self.keep_alive = False
 
-            if self.mode == 'close':
-                self.keep_alive = False
-
         else:
             #print line
             name, value = line.split(':',1)
             name = name.strip()
             value = value.strip()
-            self.headers.append((name, value))
+            self.add_header(name, value)
+
     
     def body_is_chunked(self):
         return self.mode == 'chunked'
@@ -320,22 +319,41 @@ class HTTPHeader(object):
         if self.mode == 'length':
             return self.content_length
 
+
+url_rx = re.compile('https?://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+)))?(?P<path>.*)', re.I)
 class RequestHeader(HTTPHeader):
     def __init__(self):
         HTTPHeader.__init__(self)
         self.method = ''
         self.target_uri = ''
         self.version = ''
+        self.host = ''
 
     def set_start_line(self, line):
         self.method, self.target_uri, self.version = line.rstrip().split(' ',2)
+        if self.method.upper() == "CONNECT":
+            # target_uri = host:port
+            pass
+        else:
+            match = url_rx.match(self.target_uri)
+            if match:
+                self.add_header('Host', match.group('authority'))
+                self.target_uri = match.group('path')
+                if not path:
+                    if self.method.upper() == 'OPTIONS':
+                        self.target_uri = '*'
+                    else:
+                        self.target_uri = '/'
+
+            
         if self.version =='HTTP/1.0':
             self.keep_alive = False
+
 
     def has_body(self):
         return self.mode in ('chunked', 'length')
 
-    def write_canonicalized_start(self, buf):
+    def write_decoded_start(self, buf):
         buf.write('%s %s %s\r\n'%(self.method, self.target_uri, self.version))
 
 class ResponseHeader(HTTPHeader):
@@ -360,15 +378,17 @@ class ResponseHeader(HTTPHeader):
 
         return True
 
-    def write_canonicalized_start(self, buf):
+    def write_decoded_start(self, buf):
         buf.write('%s %d %s\r\n'%(self.version, self.code, self.phrase))
 
 
 class RequestMessage(HTTPMessage):
+    CONTENT_TYPE="%s;msgtype=request"%HTTPMessage.CONTENT_TYPE
     def __init__(self, buffer):
         HTTPMessage.__init__(self, buffer, RequestHeader())
 
 class ResponseMessage(HTTPMessage):
+    CONTENT_TYPE="%s;msgtype=response"%HTTPMessage.CONTENT_TYPE
     def __init__(self, buffer, request_header):
         self.interim = []
         HTTPMessage.__init__(self, buffer, ResponseHeader(request_header))
