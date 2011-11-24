@@ -52,9 +52,11 @@ class HTTPMessage(object):
                         self.body_reader = ChunkReader()
                     else:
                         length = self.header.body_length()
-                        if length is not None:
+                        if length >= 0:
                             self.body_reader = LengthReader(length)
                             self.body_chunks = [(self.offset, length)]
+                            if length == 0:
+                                self.mode = 'end'
                         else:
                             self.body_chunks = [(self.offset, 0)]
                             self.body_reader = None
@@ -75,7 +77,12 @@ class HTTPMessage(object):
             self.mode = 'end'
         
         elif self.mode != 'end':
-            # check for incomplete in body_chunks
+            if self.body_chunks:
+                # check for incomplete in body_chunks
+                offset, length = self.body_chunks.pop()
+                position = self.buffer.tell()
+                length = min(length, position-offset)
+                self.body_chunks.append((offset, length))
             self.mode = 'incomplete'
 
 
@@ -137,18 +144,20 @@ class HTTPMessage(object):
         return buf.getvalue()
 
     def write_canonicalized_message(self, buf):
-        self.write_canonicalized_header(buf)
-        # write content length?
+        self.header.write_canonicalized(buf)
+        if self.header.has_body():
+            length = sum(l for o,l in self.body_chunks)
+            buf.write('Content-Length: %d\r\n'%length)
+        buf.write('\r\n')
         self.write_canonicalized_body(buf)
 
 
-    def write_canonicalized_headers(self, buf):
-        pass
-
     def write_canonicalized_body(self, buf):
+        current = self.buffer.tell()
         for offset, length in self.body_chunks:
-            self.buffer.seek(self.body_offset)
-            self.buffer.write(self.buffer.read(self.body_length))
+            self.buffer.seek(offset)
+            buf.write(self.buffer.read(length))
+        self.buffer.seek(current)
             
 class ChunkReader(object):
     def __init__(self):
@@ -211,6 +220,7 @@ class LengthReader(object):
             
 
 class HTTPHeader(object):
+    STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding', 'TE', 'Expect', 'Trailer')
     def __init__(self):
         self.headers = []
         self.keep_alive = True
@@ -218,13 +228,30 @@ class HTTPHeader(object):
         self.content_length = None
         self.encoding = None
         self.trailers = []
-        self.expect_continue=True
+        self.expect_continue=False
 
     def has_body(self):
         pass
 
     def set_start_line(self, line):
         pass
+
+
+    def write_canonicalized(self, buf):
+        self.write_canonicalized_start(buf)
+        self.write_canonicalized_headers(buf)
+
+    def write_canonicalized_start(self, buf):
+        pass
+
+    def write_canonicalized_headers(self, buf):
+        strip = self.STRIP_HEADERS if self.has_body() else ()
+        for k,v in self.headers:
+            if k not in strip:
+                buf.write('%s: %s\r\n'%(k,v))
+        for k,v in self.trailers:
+            if k not in strip:
+                buf.write('%s: %s\r\n'%(k,v))
 
     def add_trailer(self, line):
         if line.startswith(' ') or line.startswith('\t'):
@@ -308,6 +335,9 @@ class RequestHeader(HTTPHeader):
     def has_body(self):
         return self.mode in ('chunked', 'length')
 
+    def write_canonicalized_start(self, buf):
+        buf.write('%s %s %s\r\n'%(self.method, self.target_uri, self.version))
+
 class ResponseHeader(HTTPHeader):
     def __init__(self, request):
         HTTPHeader.__init__(self)
@@ -327,13 +357,11 @@ class ResponseHeader(HTTPHeader):
             return False
         elif self.code in Codes.no_body:
             return False
-        elif self.mode == 'chunked':
-            return True
-        elif self.mode == 'length':
-            return self.content_length > 0
 
-        # no length, wait for connection close
         return True
+
+    def write_canonicalized_start(self, buf):
+        buf.write('%s %d %s\r\n'%(self.version, self.code, self.phrase))
 
 
 class RequestMessage(HTTPMessage):
@@ -353,7 +381,7 @@ class ResponseMessage(HTTPMessage):
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
-            self.body_offset = -1
+            self.body_chunks = []
             self.mode = 'start'
             self.body_reader = None
             text = HTTPMessage.feed(self, text)

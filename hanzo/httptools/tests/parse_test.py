@@ -14,7 +14,7 @@ get_request = "\r\n".join( [
 get_response = "\r\n".join( [
     "HTTP/1.1 200 OK",
     "Host: example.org",
-    "Content-Length:5",
+    "Content-Length: 5",
     "",
     "tests",
 ])
@@ -32,8 +32,9 @@ class GetTest(unittest2.TestCase):
         self.assertEqual(get_request, buffer.getvalue())
         self.assertTrue(p.complete())
 
-        print repr(get_response)
 
+        self.assertEqual(get_request, p.get_canonicalized_message())
+        print repr(get_response)
         
         buffer = StringIO()
         p = ResponseMessage(buffer, p.header)
@@ -42,6 +43,7 @@ class GetTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(get_response, buffer.getvalue())
         self.assertTrue(p.complete())
+        self.assertEqual(get_response, p.get_canonicalized_message())
 
 head_request = "\r\n".join( [
     "HEAD / HTTP/1.1",
@@ -52,7 +54,7 @@ head_request = "\r\n".join( [
 head_response = "\r\n".join( [
     "HTTP/1.1 200 OK",
     "Host: example.org",
-    "Content-Length:5",
+    "Content-Length: 5",
     "",
     "",
 ])
@@ -69,6 +71,7 @@ class HeadTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(head_request, buffer.getvalue())
         self.assertTrue(p.complete())
+        self.assertEqual(head_request, p.get_canonicalized_message())
 
         print repr(head_response)
 
@@ -80,6 +83,8 @@ class HeadTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertEqual(head_response, buffer.getvalue())
         self.assertTrue(p.complete())
+        self.assertEqual(head_response, p.get_canonicalized_message())
+
 post_request = "\r\n".join( [
     "POST / HTTP/1.1",
     "Host: example.org",
