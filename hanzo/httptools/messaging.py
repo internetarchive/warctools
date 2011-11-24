@@ -16,21 +16,27 @@ CRLF = '\r\n'
 
 """
 Missing:
-    Parsing Trailing Headers as part of the request
     comma parsing/header folding
 
 """
 
-class HTTPParser(object):
+# todo HTTPMessage -> HTTPMessage
+
+
+class HTTPMessage(object):
     """A stream based parser for http like messages"""
     def __init__(self, buffer, header):
         self.buffer = buffer
         self.offset = self.buffer.tell()
         self.header = header
         
-        self.body_offset = -1
+        self.body_chunks = []
         self.mode = 'start'
         self.body_reader = None
+
+
+    def feed_fd(self, fd):
+        return self.feed(fd.read())
 
     def feed(self, text):
         if text and self.mode == 'start':
@@ -42,21 +48,24 @@ class HTTPParser(object):
                 if not self.header.has_body():
                     self.mode = 'end'
                 else:
-                    self.body_offset = self.offset
                     if self.header.body_is_chunked():
                         self.body_reader = ChunkReader()
                     else:
-                        len = self.header.body_length()
-                        if len is not None:
-                            self.body_reader = LengthReader(len)
+                        length = self.header.body_length()
+                        if length is not None:
+                            self.body_reader = LengthReader(length)
+                            self.body_chunks = [(self.offset, length)]
                         else:
+                            self.body_chunks = [(self.offset, 0)]
                             self.body_reader = None
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
                  text = self.body_reader.feed(self, text)
             else:
+                ( (offset, length), ) = self.body_chunks
                 self.buffer.write(text)
+                self.body_chunks = ( (offset, length+len(text)), )
                 text = ''
 
         return text
@@ -66,6 +75,7 @@ class HTTPParser(object):
             self.mode = 'end'
         
         elif self.mode != 'end':
+            # check for incomplete in body_chunks
             self.mode = 'incomplete'
 
 
@@ -121,6 +131,24 @@ class HTTPParser(object):
 
         return text
 
+    def get_canonicalized_message(self):
+        buf = StringIO()
+        self.write_canonicalized_message(buf)
+        return buf.getvalue()
+
+    def write_canonicalized_message(self, buf):
+        self.write_canonicalized_header(buf)
+        # write content length?
+        self.write_canonicalized_body(buf)
+
+
+    def write_canonicalized_headers(self, buf):
+        pass
+
+    def write_canonicalized_body(self, buf):
+        for offset, length in self.body_chunks:
+            self.buffer.seek(self.body_offset)
+            self.buffer.write(self.buffer.read(self.body_length))
             
 class ChunkReader(object):
     def __init__(self):
@@ -133,8 +161,11 @@ class ChunkReader(object):
                 #print self.mode, repr(text)
                 
                 line, text = parser.feed_line(text)
+                offset = parser.buffer.tell()
+
                 if line is not None:
                     chunk = int(line.split(';',1)[0], 16)
+                    parser.body_chunks.append((offset, chunk))
                     self.remaining = chunk
                     if chunk == 0:
                         self.mode = 'trailer'
@@ -305,26 +336,26 @@ class ResponseHeader(HTTPHeader):
         return True
 
 
-class RequestParser(HTTPParser):
+class RequestMessage(HTTPMessage):
     def __init__(self, buffer):
-        HTTPParser.__init__(self, buffer, RequestHeader())
+        HTTPMessage.__init__(self, buffer, RequestHeader())
 
-class ResponseParser(HTTPParser):
+class ResponseMessage(HTTPMessage):
     def __init__(self, buffer, request_header):
         self.interim = []
-        HTTPParser.__init__(self, buffer, ResponseHeader(request_header))
+        HTTPMessage.__init__(self, buffer, ResponseHeader(request_header))
 
     def got_continue(self):
         return bool(self.interim)
 
     def feed(self, text):
-        text = HTTPParser.feed(self, text)
+        text = HTTPMessage.feed(self, text)
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
             self.body_offset = -1
             self.mode = 'start'
             self.body_reader = None
-            text = HTTPParser.feed(self, text)
+            text = HTTPMessage.feed(self, text)
         return text
             

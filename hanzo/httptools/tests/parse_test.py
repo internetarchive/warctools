@@ -2,7 +2,7 @@ import unittest2
 
 
 from StringIO import StringIO
-from hanzo.httptools.messaging import RequestParser, ResponseParser
+from hanzo.httptools.messaging import RequestMessage, ResponseMessage
 
 
 get_request = "\r\n".join( [
@@ -25,7 +25,7 @@ class GetTest(unittest2.TestCase):
     def runTest(self):
         print repr(get_request)
         buffer = StringIO()
-        p = RequestParser(buffer)
+        p = RequestMessage(buffer)
         text = p.feed(get_request)
 
         self.assertEqual(text, '')
@@ -36,7 +36,7 @@ class GetTest(unittest2.TestCase):
 
         
         buffer = StringIO()
-        p = ResponseParser(buffer, p.header)
+        p = ResponseMessage(buffer, p.header)
         text = p.feed(get_response)
 
         self.assertEqual(text, '')
@@ -63,7 +63,7 @@ class HeadTest(unittest2.TestCase):
     def runTest(self):
         print repr(head_request)
         buffer = StringIO()
-        p = RequestParser(buffer)
+        p = RequestMessage(buffer)
         text = p.feed(head_request)
 
         self.assertEqual(text, '')
@@ -74,7 +74,7 @@ class HeadTest(unittest2.TestCase):
 
         
         buffer = StringIO()
-        p = ResponseParser(buffer, p.header)
+        p = ResponseMessage(buffer, p.header)
         text = p.feed(head_response)
 
         self.assertEqual(text, '')
@@ -107,7 +107,7 @@ class PostTest(unittest2.TestCase):
     def runTest(self):
         print repr(post_request)
         buffer = StringIO()
-        p = RequestParser(buffer)
+        p = RequestMessage(buffer)
         text = p.feed(post_request)
 
         self.assertEqual(text, '')
@@ -118,7 +118,7 @@ class PostTest(unittest2.TestCase):
 
         
         buffer = StringIO()
-        p = ResponseParser(buffer, p.header)
+        p = ResponseMessage(buffer, p.header)
         text = p.feed(post_response)
         
 

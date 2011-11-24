@@ -59,7 +59,11 @@ class ArchiveRecord(object):
     def get_header(self, name):
         for k,v in self.headers:
             if name == k:
-                return v
+                return v    
+
+    def set_header(self, name, value):
+        self.headers = [(k,v) for (k,v) in self.headers if k != name]
+        self.headers.append((name, value))
 
     def dump(self, content=True):
         print 'Headers:'
