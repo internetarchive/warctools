@@ -147,16 +147,31 @@ class HTTPMessage(object):
         if self.header.has_body():
             length = sum(l for o,l in self.body_chunks)
             buf.write('Content-Length: %d\r\n'%length)
+        body = self.get_body()
+        if self.header.encoding and body:
+            try: 
+                data=zlib.decompress(data)
+            except zlib.error:
+                 try:
+                     data=zlib.decompress(data,16+zlib.MAX_WBITS)
+                 except zlib.error:
+                    buf.write('Content-Encoding: %s\r\n'%self.header.encoding)
         buf.write('\r\n')
-        self.write_decoded_body(buf)
+        buf.write(body)
 
 
-    def write_decoded_body(self, buf):
+    def get_body(self):
+        body = StringIO()
+        self.write_body(body)
+        return body.getvalue()
+
+    def write_body(self, body):
         current = self.buffer.tell()
         for offset, length in self.body_chunks:
             self.buffer.seek(offset)
-            buf.write(self.buffer.read(length))
+            body.write(self.buffer.read(length))
         self.buffer.seek(current)
+
             
 class ChunkReader(object):
     def __init__(self):
