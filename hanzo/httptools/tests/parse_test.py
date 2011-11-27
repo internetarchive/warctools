@@ -24,24 +24,22 @@ class GetTest(unittest2.TestCase):
 
     def runTest(self):
         print repr(get_request)
-        buffer = StringIO()
-        p = RequestMessage(buffer)
-        text = p.feed(get_request)
-
-        self.assertEqual(text, '')
-        self.assertEqual(get_request, buffer.getvalue())
+        p = RequestMessage()
+        for t in get_request:
+            print t
+            text = p.feed(t)
+            print t, text
+            self.assertEqual(text, '')
         self.assertTrue(p.complete())
 
 
         self.assertEqual(get_request, p.get_decoded_message())
         print repr(get_response)
         
-        buffer = StringIO()
-        p = ResponseMessage(buffer, p.header)
+        p = ResponseMessage(p)
         text = p.feed(get_response)
 
         self.assertEqual(text, '')
-        self.assertEqual(get_response, buffer.getvalue())
         self.assertTrue(p.complete())
         self.assertEqual(get_response, p.get_decoded_message())
 
@@ -64,24 +62,22 @@ class HeadTest(unittest2.TestCase):
 
     def runTest(self):
         print repr(head_request)
-        buffer = StringIO()
-        p = RequestMessage(buffer)
-        text = p.feed(head_request)
+        p = RequestMessage()
+        text=p.feed(head_request)
 
         self.assertEqual(text, '')
-        self.assertEqual(head_request, buffer.getvalue())
+        print p.mode
+        print p.feed_predict()
         self.assertTrue(p.complete())
         self.assertEqual(head_request, p.get_decoded_message())
 
         print repr(head_response)
 
         
-        buffer = StringIO()
-        p = ResponseMessage(buffer, p.header)
+        p = ResponseMessage(p)
         text = p.feed(head_response)
 
         self.assertEqual(text, '')
-        self.assertEqual(head_response, buffer.getvalue())
         self.assertTrue(p.complete())
         self.assertEqual(head_response, p.get_decoded_message())
 
@@ -111,24 +107,20 @@ class PostTest(unittest2.TestCase):
 
     def runTest(self):
         print repr(post_request)
-        buffer = StringIO()
-        p = RequestMessage(buffer)
+        p = RequestMessage()
         text = p.feed(post_request)
 
         self.assertEqual(text, '')
-        self.assertEqual(post_request, buffer.getvalue())
         self.assertTrue(p.complete())
 
         print repr(post_response)
 
         
-        buffer = StringIO()
-        p = ResponseMessage(buffer, p.header)
+        p = ResponseMessage(p)
         text = p.feed(post_response)
         
 
         self.assertEqual(text, '')
-        self.assertEqual(post_response, buffer.getvalue())
         self.assertTrue(p.complete())
 
 
