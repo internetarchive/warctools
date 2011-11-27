@@ -146,10 +146,8 @@ class HTTPMessage(object):
 
     def feed_line(self, text):
         """ feed text into the buffer, returning the first line found (if found yet)"""
-        #print 'feed line', repr(text)
         self.buffer.extend(text)
         pos = self.buffer.find("\r\n", self.offset)
-        print self.buffer, pos
         if pos > -1:
             pos+=2 
             text =str(self.buffer[pos:])
@@ -159,7 +157,6 @@ class HTTPMessage(object):
         else:
             line = None
             text = ''
-        #print 'feed line', repr(line), repr(text)
         return line, text
 
     def feed_length(self, text, remaining):
@@ -191,9 +188,7 @@ class HTTPMessage(object):
         return text
 
     def get_message(self):
-        buf = bytearray()
-        self.write_message(buf)
-        return str(buf)
+        return str(self.buffer)
 
 
     def get_decoded_message(self):
@@ -256,7 +251,6 @@ class ChunkReader(object):
     def feed(self, parser, text):
         while text:
             if self.mode == 'start':
-                #print self.mode, repr(text)
                 
                 line, text = parser.feed_line(text)
                 offset = len(parser.buffer)
@@ -413,7 +407,7 @@ class HTTPHeader(object):
             return self.content_length
 
 
-url_rx = re.compile('(P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+)))?(?P<path>.*)', re.I)
+url_rx = re.compile('(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)(?P<path>.*)', re.I)
 class RequestHeader(HTTPHeader):
     def __init__(self):
         HTTPHeader.__init__(self)
@@ -421,9 +415,8 @@ class RequestHeader(HTTPHeader):
         self.target_uri = ''
         self.version = ''
         self.host = ''
-        self.scheme = ''
-        self.url = ''
-        self.port = 0
+        self.scheme = 'http'
+        self.port = 80
         self.host = ''
     
 
@@ -437,9 +430,12 @@ class RequestHeader(HTTPHeader):
         else:
             match = url_rx.match(self.target_uri)
             if match:
-                self.add_header('Host', match.group('authority'))
+                #self.add_header('Host', match.group('authority'))
                 self.target_uri = match.group('path')
-                self.host, self.port = match.group('host'), int(match.group('port'))
+                self.host = match.group('host')
+                port = match.group('port')
+                self.port = int(port) if port else 80
+
                 self.scheme = match.group('scheme')
                 if not self.target_uri:
                     if self.method.upper() == 'OPTIONS':
@@ -517,6 +513,10 @@ class ResponseMessage(HTTPMessage):
 
     def got_continue(self):
         return bool(self.interim)
+
+    @property
+    def code(self):
+        return self.header.code
 
     def feed(self, text):
         text = HTTPMessage.feed(self, text)
