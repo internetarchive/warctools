@@ -70,7 +70,6 @@ class HTTPMessage(object):
 
     def feed_predict(self):
         """returns size, terminator request for input. size is 0 means end. """
-        CRLF = '\r\n'
         if self.mode == 'start':
             return None, CRLF
         elif self.mode == 'headers':
@@ -236,7 +235,6 @@ class ChunkReader(object):
         self.remaining = 0
 
     def feed_predict(self):
-        CRLF = '\r\n'
         if self.mode =='start':
             return None, CRLF
         elif self.mode == 'chunk':
