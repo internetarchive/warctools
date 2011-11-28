@@ -425,7 +425,7 @@ class RequestHeader(HTTPHeader):
         self.method, self.target_uri, self.version = line.rstrip().split(' ',2)
         if self.method.upper() == "CONNECT":
             # target_uri = host:port
-            self.host, self.port = self.target.uri.split(':')
+            self.host, self.port = self.target_uri.split(':')
             pass
         else:
             match = url_rx.match(self.target_uri)
