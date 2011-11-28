@@ -4,7 +4,12 @@ inline with the current draft recommendations from the http working group.
 http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-17
 
 Unlike other libraries, this is for clients, servers and proxies.
+
+Missing:
+    comma parsing/header folding
+
 """
+
 import re
 import zlib
 
@@ -14,12 +19,6 @@ class ParseError(StandardError):
 from .semantics import Codes, Methods
 
 CRLF = '\r\n'
-
-"""
-Missing:
-    comma parsing/header folding
-
-"""
 
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
