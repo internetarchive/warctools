@@ -91,8 +91,8 @@ class HTTPMessage(object):
             text = self.feed_start(text)
 
         if text and self.mode == 'headers':
-           text = self.feed_headers(text)
-           if self.mode == 'body':
+            text = self.feed_headers(text)
+            if self.mode == 'body':
                 if not self.header.has_body():
                     self.mode = 'end'
                 else:
