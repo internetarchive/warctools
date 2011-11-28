@@ -133,10 +133,6 @@ class HTTPMessage(object):
                 self.body_chunks.append((offset, length))
             self.mode = 'incomplete'
 
-    def get_unread(self):
-        return self.unread.getvalue()
-
-
     def headers_complete(self):
         return self.mode in ('end', 'body')
 
