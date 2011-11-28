@@ -6,6 +6,7 @@ http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-17
 Unlike other libraries, this is for clients, servers and proxies.
 """
 import re
+import zlib
 
 class ParseError(StandardError):
     pass
