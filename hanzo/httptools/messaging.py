@@ -208,12 +208,12 @@ class HTTPMessage(object):
         body = self.get_body()
         if self.header.encoding and body:
             try: 
-                data=zlib.decompress(data)
+                body = zlib.decompress(body)
             except zlib.error:
                 try:
-                    data=zlib.decompress(data,16+zlib.MAX_WBITS)
+                    body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
                 except zlib.error:
-                    buf.extend('Content-Encoding: %s\r\n'%self.header.encoding)
+                    buf.extend('Content-Encoding: %s\r\n' % self.header.encoding)
         buf.extend('\r\n')
         buf.extend(body)
 
