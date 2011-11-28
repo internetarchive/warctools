@@ -21,8 +21,8 @@ Missing:
 """
 
 class HTTPMessage(object):
-    CONTENT_TYPE="application/http"
     """A stream based parser for http like messages"""
+    CONTENT_TYPE="application/http"
     def __init__(self, header):
         self.buffer = bytearray()
         self.offset = 0
