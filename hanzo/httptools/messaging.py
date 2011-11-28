@@ -59,7 +59,7 @@ class HTTPMessage(object):
             if length == 0:
                 return  ''
             elif terminator == '\r\n':
-                text = f.readLine()
+                text = fd.readLine()
             elif length <0:
                 text = fd.read()
             elif length >0:
