@@ -111,7 +111,7 @@ class HTTPMessage(object):
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
-                 text = self.body_reader.feed(self, text)
+                text = self.body_reader.feed(self, text)
             else:
                 ( (offset, length), ) = self.body_chunks
                 self.buffer.write(text)
@@ -211,9 +211,9 @@ class HTTPMessage(object):
             try: 
                 data=zlib.decompress(data)
             except zlib.error:
-                 try:
-                     data=zlib.decompress(data,16+zlib.MAX_WBITS)
-                 except zlib.error:
+                try:
+                    data=zlib.decompress(data,16+zlib.MAX_WBITS)
+                except zlib.error:
                     buf.extend('Content-Encoding: %s\r\n'%self.header.encoding)
         buf.extend('\r\n')
         buf.extend(body)
