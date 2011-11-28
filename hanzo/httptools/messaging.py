@@ -113,7 +113,7 @@ class HTTPMessage(object):
                 text = self.body_reader.feed(self, text)
             else:
                 ( (offset, length), ) = self.body_chunks
-                self.buffer.write(text)
+                self.buffer.extend(text)
                 self.offset = len(self.buffer)
                 self.body_chunks = ( (offset, length+len(text)), )
                 text = ''
