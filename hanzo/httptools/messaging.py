@@ -17,6 +17,7 @@ class ParseError(StandardError):
     pass
 
 from .semantics import Codes, Methods
+from hanzo.warctools import log
 
 CRLF = '\r\n'
 
@@ -121,7 +122,7 @@ class HTTPMessage(object):
         return  text
 
     def close(self):
-        if self.mode =='start' or (self.body_reader is None and self.mode == 'body'):
+        if (self.body_reader is None and self.mode == 'body'):
             self.mode = 'end'
         
         elif self.mode != 'end':
@@ -451,9 +452,9 @@ class ResponseHeader(HTTPHeader):
     def __init__(self, request):
         HTTPHeader.__init__(self)
         self.request = request
-        self.version = None
-        self.code = None
-        self.phrase = None
+        self.version = "HTTP/1.1"
+        self.code = 0
+        self.phrase = "Empty Response"
 
     @property
     def method(self):
