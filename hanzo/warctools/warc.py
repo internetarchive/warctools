@@ -52,10 +52,11 @@ class WarcRecord(ArchiveRecord):
         out.write(self.version)
         out.write(nl)
         for k,v in self.headers:
-            out.write(k)
-            out.write(": ")
-            out.write(v)
-            out.write(nl)
+            if k not in (self.CONTENT_TYPE, self.CONTENT_LENGTH, self.BLOCK_DIGEST):
+                out.write(k)
+                out.write(": ")
+                out.write(v)
+                out.write(nl)
         content_type, content_buffer = self.content
         content_buffer=buffer(content_buffer)
         if content_type:
