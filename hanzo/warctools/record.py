@@ -31,6 +31,8 @@ class ArchiveRecord(object):
         self.content = content if content else (None, "")
         self.errors = errors if errors else []
 
+        self.compressed_record_size = None  ###rajbot
+
     HEADERS=staticmethod(add_headers)
 
     @property

@@ -114,6 +114,11 @@ class GzipRecordStream(RecordStream):
         offset = self.fh.tell() if offsets else None
         self.gz = GzipRecordFile(self.fh)
         record, r_errors, _offset = self.record_parser.parse(self.gz, offset=None)
+
+        ###rajbot
+        if offsets and record:
+            record.compressed_record_size = self.fh.tell() - offset
+
         errors.extend(r_errors)
         return offset, record, errors
                 
