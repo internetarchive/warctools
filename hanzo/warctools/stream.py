@@ -19,12 +19,12 @@ def open_record_stream(record_class=None, filename=None, file_handle=None, mode=
 
         if record_class == None:
             record_class = guess_record_type(file_handle)
-        
+
         if record_class == None:
             raise StandardError('Failed to guess compression')
 
         record_parser = record_class.make_parser()
-            
+
         if gzip == 'auto':
             if is_gzip_file(file_handle):
                 gzip = 'record'
@@ -33,7 +33,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None, mode=
                 # assume uncompressed file
                 #debug('autodetected: uncompressed file')
                 gzip = None
-                    
+
 
         if gzip=='record':
             return GzipRecordStream(file_handle, record_parser)
@@ -41,7 +41,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None, mode=
             return GzipFileStream(file_handle, record_parser)
         else:
             return RecordStream(file_handle, record_parser)
-        
+
 
 class RecordStream(object):
     """A readable/writable stream of Archive Records. Can be iterated over
@@ -58,7 +58,7 @@ class RecordStream(object):
 
     def read_records(self, limit=1, offsets=True):
         """Yield a tuple of (offset, record, errors) where
-        Offset is either a number or None. 
+        Offset is either a number or None.
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
 
@@ -67,7 +67,7 @@ class RecordStream(object):
             offset, record, errors = self._read_record(offsets)
             nrecords+=1
             yield (offset, record,errors)
-            if not record: 
+            if not record:
                 break
 
     def __iter__(self):
@@ -79,7 +79,7 @@ class RecordStream(object):
                 raise StandardError('Errors while decoding '+",".join(errors))
             else:
                 break
-            
+
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
         offset = self.fh.tell() if offsets else None
@@ -98,30 +98,55 @@ class GzipRecordStream(RecordStream):
         RecordStream.__init__(self,file_handle, record_parser)
         self.gz = None
 
-    def _read_record(self, offsets):
-        errors = []
-        if self.gz is not None:
-            # we have an open record, so try for a record at the end
-            # at best will read trailing newlines at end of last record
-            record, r_errors, _offset = self.record_parser.parse(self.gz, offset=None)
-            if record:
-                record.error('multiple warc records in gzip record file') 
-                return None, record, errors
-            self.gz.close()
-            errors.extend(r_errors)
-    
-
-        offset = self.fh.tell() if offsets else None
-        self.gz = GzipRecordFile(self.fh)
-        record, r_errors, _offset = self.record_parser.parse(self.gz, offset=None)
-
         ###rajbot
-        if offsets and record:
-            record.compressed_record_size = self.fh.tell() - offset
+        self.next_record = None
+        self.next_errors = None
+        self.next_offset = None
 
+    def _read_record(self, offsets):
+        """rajbot: restructure this function to call parse() twice, once
+        to read the record, and once to read possible trailing bytes.
+        This is to ensure that the compressed_record_size is correct.
+        """
+        errors = []
+
+        if self.next_record:
+            record   = self.next_record
+            errors   = self.next_errors
+            offset   = self.next_offset if offsets else None
+
+            self.next_record = None
+            self.next_errors = None
+            self.next_offset = None
+
+            return offset, record, errors
+
+
+        offset_ = self.fh.tell()
+        self.gz = GzipRecordFile(self.fh)
+        record, r_errors, tmp_offset = self.record_parser.parse(self.gz, offset=None)
+
+        next_offset_ = self.fh.tell()
+        next_record, next_errors, tmp_next_offset = self.record_parser.parse(self.gz, offset=None)
+
+        if not next_record:
+            if record:
+                record.compressed_record_size = self.fh.tell() - offset_
+        else:
+            next_record.error('multiple warc records in gzip record file')
+            if record:
+                record.compressed_record_size = next_offset_ - offset_
+            next_record.compressed_record_size = self.fh.tell() - next_offset_
+            self.next_record = next_record
+            self.next_errors = next_errors
+            self.next_offset = next_offset_
+
+        self.gz.close()
+
+        offset  = offset_ if offsets else None
         errors.extend(r_errors)
         return offset, record, errors
-                
+
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
@@ -133,10 +158,10 @@ class GzipFileStream(RecordStream):
 
 
 
-### record-gzip handler, based on zlib 
+### record-gzip handler, based on zlib
 ### implements readline() access over a a single
 ### gzip-record. must be re-created to read another record
-    
+
 
 CHUNK_SIZE=1024 # the size to read in, make this bigger things go faster.
 line_rx=re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',re.DOTALL)
@@ -156,14 +181,14 @@ class GzipRecordFile(object):
                 match=line_rx.match(self.buffer)
                 #print match
                # print 'split:', split[0],split[1], len(split[2])
-                if match: 
+                if match:
                     output = match.group('line')
                     self.buffer = ""+match.group('tail')
                     return output
                 elif self.done:
                     output = self.buffer
                     self.buffer = ""
-                    
+
                     return output
 
     def readline(self):
@@ -174,7 +199,7 @@ class GzipRecordFile(object):
 
             if self.done:
                 return ""
-            
+
             #print 'read chunk at', self.fh.tell(), self.done
             chunk = self.fh.read(CHUNK_SIZE)
             out = self.z.decompress(chunk)
@@ -192,8 +217,3 @@ class GzipRecordFile(object):
     def close(self):
         if self.z:
             self.z.flush()
-            
-                
-    
-            
-                
