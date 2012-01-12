@@ -76,7 +76,7 @@ class RecordStream(object):
             if record:
                 yield record
             elif errors:
-                raise StandardError('Errors while decoding '+",".join(errors))
+                raise StandardError('Errors while decoding '+",".join(str(error) for error in errors))
             else:
                 break
             
