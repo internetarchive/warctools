@@ -305,7 +305,7 @@ class LengthReader(object):
 
 class HTTPHeader(object):
     STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding', 'TE', 'Expect', 'Trailer')
-    def __init__(self):
+    def __init__(self, ignore_headers):
         self.headers = []
         self.keep_alive = False
         self.mode = 'close'
@@ -313,6 +313,7 @@ class HTTPHeader(object):
         self.encoding = None
         self.trailers = []
         self.expect_continue=False
+        self.ignore_headers = set(x.lower() for x in ignore_headers)
 
     def has_body(self):
         pass
@@ -368,22 +369,25 @@ class HTTPHeader(object):
                 
                 # todo handle multiple instances
                 # of these headers
-                if name == 'expect':
+                if name in self.ignore_headers:
+                    #print >> sys.stderr, 'ignore', name
+                    pass
+                elif name == 'expect':
                     if '100-continue' in value:
                         self.expect_continue = True
-                if name == 'content-length':
+                elif name == 'content-length':
                     if self.mode == 'close':
                         self.content_length = int(value)
                         self.mode = 'length'
                         
-                if name == 'transfer-encoding':
+                elif name == 'transfer-encoding':
                     if 'chunked' in value:
                         self.mode = 'chunked'
 
-                if name == 'content-encoding':
+                elif name == 'content-encoding':
                     self.encoding = value
 
-                if name == 'connection':
+                elif name == 'connection':
                     if 'keep-alive' in value:
                         self.keep_alive = True
                     elif 'close' in value:
@@ -407,8 +411,8 @@ class HTTPHeader(object):
 
 url_rx = re.compile('(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)(?P<path>.*)', re.I)
 class RequestHeader(HTTPHeader):
-    def __init__(self):
-        HTTPHeader.__init__(self)
+    def __init__(self, ignore_headers=()):
+        HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.method = ''
         self.target_uri = ''
         self.version = ''
@@ -452,8 +456,8 @@ class RequestHeader(HTTPHeader):
         buf.extend('%s %s %s\r\n'%(self.method, self.target_uri, self.version))
 
 class ResponseHeader(HTTPHeader):
-    def __init__(self, request):
-        HTTPHeader.__init__(self)
+    def __init__(self, request, ignore_headers=()):
+        HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.request = request
         self.version = "HTTP/1.1"
         self.code = 0
@@ -499,14 +503,14 @@ class ResponseHeader(HTTPHeader):
 
 class RequestMessage(HTTPMessage):
     CONTENT_TYPE="%s;msgtype=request"%HTTPMessage.CONTENT_TYPE
-    def __init__(self):
-        HTTPMessage.__init__(self, RequestHeader())
+    def __init__(self, ignore_headers=()):
+        HTTPMessage.__init__(self, RequestHeader(ignore_headers=ignore_headers))
 
 class ResponseMessage(HTTPMessage):
     CONTENT_TYPE="%s;msgtype=response"%HTTPMessage.CONTENT_TYPE
-    def __init__(self, request):
+    def __init__(self, request, ignore_headers=()):
         self.interim = []
-        HTTPMessage.__init__(self, ResponseHeader(request.header))
+        HTTPMessage.__init__(self, ResponseHeader(request.header, ignore_headers=ignore_headers))
 
     def got_continue(self):
         return bool(self.interim)
