@@ -20,7 +20,8 @@ class ParseError(StandardError):
 from .semantics import Codes, Methods
 from hanzo.warctools import log
 
-CRLF = '\r\n'
+
+NEWLINES=('\r\n', '\n')
 
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
@@ -72,9 +73,9 @@ class HTTPMessage(object):
     def feed_predict(self):
         """returns size, terminator request for input. size is 0 means end. """
         if self.mode == 'start':
-            return None, CRLF
+            return None, '\r\n'
         elif self.mode == 'headers':
-            return None, CRLF
+            return None, '\r\n'
         elif self.mode == 'body':
             if self.body_reader is not None:
                 return self.body_reader.feed_predict()
@@ -145,9 +146,9 @@ class HTTPMessage(object):
     def feed_line(self, text):
         """ feed text into the buffer, returning the first line found (if found yet)"""
         self.buffer.extend(text)
-        pos = self.buffer.find("\r\n", self.offset)
+        pos = self.buffer.find('\n', self.offset)
         if pos > -1:
-            pos+=2 
+            pos+=1
             text =str(self.buffer[pos:])
             del self.buffer[pos:]
             line = str(self.buffer[self.offset:])
@@ -168,7 +169,7 @@ class HTTPMessage(object):
     def feed_start(self, text):
         line, text = self.feed_line(text)
         if line is not None:
-            if line != CRLF: # skip leading newlines
+            if line not in NEWLINES:
                 self.header.set_start_line(line)
                 self.mode = 'headers'
 
@@ -179,7 +180,7 @@ class HTTPMessage(object):
             line, text = self.feed_line(text)
             if line is not None:
                 self.header.add_header_line(line)
-                if line == CRLF:
+                if line in NEWLINES:
                     self.mode = 'body'
                     break
 
@@ -234,14 +235,14 @@ class ChunkReader(object):
 
     def feed_predict(self):
         if self.mode =='start':
-            return None, CRLF
+            return None, '\r\n'
         elif self.mode == 'chunk':
             if self.remaining == 0:
-                return None, CRLF
+                return None, '\r\n'
             else:
                 return self.remaining, None 
         elif self.mode == 'trailer':
-            return None, CRLF
+            return None, '\r\n'
         elif self.mode == 'end':
             return 0, None
 
@@ -279,7 +280,7 @@ class ChunkReader(object):
                 line, text = parser.feed_line(text)
                 if line is not None:
                     parser.header.add_trailer_line(line)
-                    if line == CRLF:
+                    if line in NEWLINES:
                         self.mode = 'end'
 
             if self.mode == 'end':
@@ -343,7 +344,7 @@ class HTTPHeader(object):
             line = line.strip()
             v = "%s %s"%(v, line)
             self.trailers.append((k,v))
-        elif line == '\r\n':
+        elif line in NEWLINES:
             pass
         else:
             name, value = line.split(':',1)
@@ -361,7 +362,7 @@ class HTTPHeader(object):
             v = "%s %s"%(v, line)
             self.add_header(k, v)
         
-        elif line == '\r\n':
+        elif line in NEWLINES:
             for name, value in self.headers:
                 name = name.lower()
                 value = value.lower()
