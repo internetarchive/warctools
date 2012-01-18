@@ -11,6 +11,7 @@ Missing:
 """
 
 import re
+import sys
 import zlib
 
 class ParseError(StandardError):
@@ -111,6 +112,7 @@ class HTTPMessage(object):
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
+                #print >> sys.stderr, 'feeding', text[:50]
                 text = self.body_reader.feed(self, text)
             else:
                 ( (offset, length), ) = self.body_chunks
@@ -250,6 +252,7 @@ class ChunkReader(object):
                 line, text = parser.feed_line(text)
                 offset = len(parser.buffer)
 
+                #print >> sys.stderr, line, text
                 if line is not None:
                     chunk = int(line.split(';',1)[0], 16)
                     parser.body_chunks.append((offset, chunk))

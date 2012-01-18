@@ -51,9 +51,12 @@ def main(argv):
                             message = RequestMessage()
 
                         if message:
-                            message.feed(content)
-                            content = message.get_decoded_message()
-                            record.content = content_type, content
+                            leftover = message.feed(content)
+                            if not leftover and message.complete():
+                                content = message.get_decoded_message()
+                                record.content = content_type, content
+                            else:
+                                print >> sys.stderr, 'errors decoding http in record', record.id
 
                 record.write_to(out, gzip=options.gzip)
 
