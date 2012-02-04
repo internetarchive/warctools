@@ -11,7 +11,6 @@ Missing:
 """
 
 import re
-import sys
 import zlib
 
 class ParseError(StandardError):
