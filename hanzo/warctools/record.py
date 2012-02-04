@@ -10,8 +10,8 @@ strip = re.compile(r'[^\w\t \|\\\/]')
 def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
     def _add_headers(cls):
-        for k,v in kwargs.iteritems():
-            setattr(cls,k,v)
+        for k, v in kwargs.iteritems():
+            setattr(cls, k, v)
         cls._HEADERS = kwargs.keys()
         return cls
     return _add_headers
@@ -31,7 +31,7 @@ class ArchiveRecord(object):
         self.content = content if content else (None, "")
         self.errors = errors if errors else []
 
-    HEADERS=staticmethod(add_headers)
+    HEADERS = staticmethod(add_headers)
 
     @property
     def date(self):

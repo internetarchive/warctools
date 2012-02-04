@@ -23,6 +23,12 @@ bad_lines = 5 # when to give up looking for the version stamp
     WARCINFO_ID = 'WARC-Warcinfo-ID',
 )
 class WarcRecord(ArchiveRecord):
+
+    # Pylint is very bad at decorators, E1101 is the message that says
+    # a member variable does not exist
+
+    # pylint: disable-msg=E1101
+
     VERSION = "WARC/1.0"
     VERSION18 = "WARC/0.18"
     VERSION17 = "WARC/0.17"
@@ -32,8 +38,9 @@ class WarcRecord(ArchiveRecord):
     CONVERSION = "conversion"
     WARCINFO = "warcinfo"
 
-    def __init__(self, version=VERSION, headers=None, content=None, errors=None):
-        ArchiveRecord.__init__(self,headers,content,errors) 
+    def __init__(self, version=VERSION, headers=None, content=None,
+                 errors=None):
+        ArchiveRecord.__init__(self, headers, content, errors) 
         self.version = version
 
     @property
