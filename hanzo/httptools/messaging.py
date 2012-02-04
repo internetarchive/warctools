@@ -246,12 +246,13 @@ class HTTPMessage(object):
             buf.extend(self.buffer[offset:offset+length])
             
 class ChunkReader(object):
+    """Reads the body of a HTTP message with chunked encoding."""
     def __init__(self):
         self.mode = "start"
         self.remaining = 0
 
     def feed_predict(self):
-        if self.mode =='start':
+        if self.mode == 'start':
             return None, '\r\n'
         elif self.mode == 'chunk':
             if self.remaining == 0:
@@ -264,6 +265,7 @@ class ChunkReader(object):
             return 0, None
 
     def feed(self, parser, text):
+        """Feed text into the ChunkReader."""
         while text:
             if self.mode == 'start':
                 

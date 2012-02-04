@@ -1,7 +1,10 @@
 """Tests for http parsing."""
 import unittest2
 
-from hanzo.httptools.messaging import RequestMessage, ResponseMessage
+from hanzo.httptools.messaging import \
+    RequestMessage, \
+    ResponseMessage, \
+    ChunkReader
 
 get_request_lines = [
         "GET / HTTP/1.1",
@@ -111,45 +114,80 @@ class HeadTest(unittest2.TestCase):
         self.assertTrue(p.complete())
         self.assertEqual(head_response, p.get_decoded_message())
 
-post_request = "\r\n".join( [
-    "POST / HTTP/1.1",
-    "Host: example.org",
-    "Transfer-Encoding: chunked",
-    "",
-    "8",
-    "abcdefgh",
-    "0",
-    "",
-    "",
-])
-post_response = "\r\n".join( [
-    "HTTP/1.1 100 Continue",
-    "Host: example.org",
-    "",
-    "HTTP/1.0 204 No Content",
-    "Date: now!",
-    "",
-    "",
-])
-
-
-class PostTest(unittest2.TestCase):
+class PostTestChunked(unittest2.TestCase):
+    """Tests the parser with a POST request with chunked encoding."""
+    post_request = "\r\n".join( [
+            "POST / HTTP/1.1",
+            "Host: example.org",
+            "Transfer-Encoding: chunked",
+            "",
+            "8",
+            "abcdefgh",
+            "0",
+            "",
+            "",
+            ])
+    post_response = "\r\n".join( [
+            "HTTP/1.1 100 Continue",
+            "Host: example.org",
+            "",
+            "HTTP/1.0 204 No Content",
+            "Date: now!",
+            "",
+            "",
+            ])
 
     def runTest(self):
+        """Tests parsing of POST requests and responses."""
         p = RequestMessage()
-        text = p.feed(post_request)
+        text = p.feed(self.post_request)
 
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
 
         p = ResponseMessage(p)
-        text = p.feed(post_response)
+        text = p.feed(self.post_response)
         
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
 
 
+class PostTestChunkedEmpty(unittest2.TestCase):
+    """Tests the parser with a POST request with chunked encoding and
+    an empty body."""
+    post_request = "\r\n".join( [
+            "POST / HTTP/1.1",
+            "Host: example.org",
+            "Transfer-Encoding: chunked",
+            "",
+            "0",
+            "",
+            "",
+            ])
+    post_response = "\r\n".join( [
+            "HTTP/1.1 100 Continue",
+            "Host: example.org",
+            "",
+            "HTTP/1.0 204 No Content",
+            "Date: now!",
+            "",
+            "",
+            ])
+
+    def runTest(self):
+        """Tests parsing of POST requests and responses."""
+        p = RequestMessage()
+        text = p.feed(self.post_request)
+
+        self.assertEqual(text, '')
+        self.assertTrue(p.complete())
+
+        p = ResponseMessage(p)
+        text = p.feed(self.post_response)
+        
+        self.assertEqual(text, '')
+        self.assertTrue(p.complete())
+
 if __name__ == '__main__':
     unittest2.main()
-
 
