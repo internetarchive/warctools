@@ -1,9 +1,10 @@
-"""An object to represent warc records, using the abstract record in record.py"""
+"""An object to represent warc records, using the abstract record in
+record.py"""
 
 import re
 import hashlib
-from .record import ArchiveRecord,ArchiveParser
-from .archive_detect import register_record_type
+from hanzo.warctools.record import ArchiveRecord, ArchiveParser
+from hanzo.warctools.archive_detect import register_record_type
 
 bad_lines = 5 # when to give up looking for the version stamp
 
