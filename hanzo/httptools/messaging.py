@@ -87,6 +87,7 @@ class HTTPMessage(object):
 
 
     def feed(self, text):
+        """Push more text from the input stream into the parser."""
         if text and self.mode == 'start':
             text = self.feed_start(text)
 
@@ -123,6 +124,7 @@ class HTTPMessage(object):
         return  text
 
     def close(self):
+        """Mark the end of the input stream and finish parsing."""
         if (self.body_reader is None and self.mode == 'body'):
             self.mode = 'end'
         
@@ -136,6 +138,7 @@ class HTTPMessage(object):
             self.mode = 'incomplete'
 
     def headers_complete(self):
+        """Check whether the input stream has finished supplying headers."""
         return self.mode in ('end', 'body')
 
     def complete(self):

@@ -1,9 +1,7 @@
+"""Tests for http parsing."""
 import unittest2
 
-
-from StringIO import StringIO
 from hanzo.httptools.messaging import RequestMessage, ResponseMessage
-
 
 get_request = "\r\n".join( [
         "GET / HTTP/1.1",
@@ -19,22 +17,27 @@ get_response = "\r\n".join( [
         "tests",
         ])
 
-class Get(unittest2.TestCase):
-
+class GetChar(unittest2.TestCase):
+    """Test basic GET request parsing. Single character at a time."""
     def runTest(self):
+        """Attempts to parse the contents of get_request and
+        get_response."""
         p = RequestMessage()
         for t in get_request:
             text = p.feed(t)
             self.assertEqual(text, '')
 
+        self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
 
         self.assertEqual(get_request, p.get_decoded_message())
 
         p = ResponseMessage(p)
-        text = p.feed(get_response)
+        for char in get_response:
+            text = p.feed(char)
+            self.assertEqual(text, '')
 
-        self.assertEqual(text, '')
+        self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
         self.assertEqual(get_response, p.get_decoded_message())
 
