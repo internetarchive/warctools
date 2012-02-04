@@ -5,38 +5,39 @@ from StringIO import StringIO
 from hanzo.httptools.messaging import RequestMessage, ResponseMessage
 
 
-class Get(unittest2.TestCase):
+get_request = "\r\n".join( [
+        "GET / HTTP/1.1",
+        "Host: example.org",
+        "",
+        "",
+        ])
+get_response = "\r\n".join( [
+        "HTTP/1.1 200 OK",
+        "Host: example.org",
+        "Content-Length: 5",
+        "",
+        "tests",
+        ])
 
-    get_request = "\r\n".join( [
-            "GET / HTTP/1.1",
-            "Host: example.org",
-            "",
-            "",
-            ])
-    get_response = "\r\n".join( [
-            "HTTP/1.1 200 OK",
-            "Host: example.org",
-            "Content-Length: 5",
-            "",
-            "tests",
-            ])
+class Get(unittest2.TestCase):
 
     def runTest(self):
         p = RequestMessage()
-        for t in self.get_request:
+        for t in get_request:
             text = p.feed(t)
             self.assertEqual(text, '')
 
         self.assertTrue(p.complete())
 
-        self.assertEqual(self.get_request, p.get_decoded_message())
+        self.assertEqual(get_request, p.get_decoded_message())
 
         p = ResponseMessage(p)
-        text = p.feed(self.get_response)
+        text = p.feed(get_response)
 
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
-        self.assertEqual(self.get_response, p.get_decoded_message())
+        self.assertEqual(get_response, p.get_decoded_message())
+
 
 head_request = "\r\n".join( [
     "HEAD / HTTP/1.1",
