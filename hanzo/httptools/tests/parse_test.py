@@ -50,11 +50,13 @@ class GetLines(unittest2.TestCase):
         at a time."""
 
         p = RequestMessage()
-        for line in get_request_lines:
+        for line in get_request_lines[:-1]:
             text = p.feed(line)
             self.assertEqual(text, "")
             text = p.feed("\r\n")
             self.assertEqual(text, "")
+        text = p.feed(get_request_lines[-1])
+        self.assertEqual(text, "")
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
@@ -62,11 +64,14 @@ class GetLines(unittest2.TestCase):
         self.assertEqual(get_request, p.get_decoded_message())
 
         p = ResponseMessage(p)
-        for line in get_response_lines:
+        for line in get_response_lines[:-1]:
             text = p.feed(line)
             self.assertEqual(text, "")
             text = p.feed("\r\n")
             self.assertEqual(text, "")
+        text = p.feed(get_response_lines[-1])
+
+        self.assertEqual(text, "")
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
