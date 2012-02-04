@@ -19,11 +19,11 @@ class ParseError(StandardError):
 
 from hanzo.httptools.semantics import Codes, Methods
 
-NEWLINES=('\r\n', '\n')
+NEWLINES = ('\r\n', '\n')
 
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
-    CONTENT_TYPE="application/http"
+    CONTENT_TYPE = "application/http"
     def __init__(self, header):
         self.buffer = bytearray()
         self.offset = 0
