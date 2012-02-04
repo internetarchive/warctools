@@ -9,28 +9,28 @@ from hanzo.warctools.archive_detect import register_record_type
 bad_lines = 5 # when to give up looking for the version stamp
 
 @ArchiveRecord.HEADERS(
-    DATE='WARC-Date',
+    DATE = 'WARC-Date',
     TYPE = 'WARC-Type',
     ID = 'WARC-Record-ID',
     CONCURRENT_TO = 'WARC-Concurrent-To',
     REFERS_TO = 'WARC-Refers-To',
     CONTENT_LENGTH = 'Content-Length',
     CONTENT_TYPE = 'Content-Type',
-    URL='WARC-Target-URI',
-    BLOCK_DIGEST='WARC-Block-Digest',
-    IP_ADDRESS='WARC-IP-Address',
-    FILENAME='WARC-Filename',
-    WARCINFO_ID='WARC-Warcinfo-ID',
+    URL = 'WARC-Target-URI',
+    BLOCK_DIGEST = 'WARC-Block-Digest',
+    IP_ADDRESS = 'WARC-IP-Address',
+    FILENAME = 'WARC-Filename',
+    WARCINFO_ID = 'WARC-Warcinfo-ID',
 )
 class WarcRecord(ArchiveRecord):
-    VERSION="WARC/1.0"
-    VERSION18="WARC/0.18"
-    VERSION17="WARC/0.17"
-    RESPONSE="response"
-    REQUEST="request"
-    METADATA="metadata"
-    CONVERSION="conversion"
-    WARCINFO="warcinfo"
+    VERSION = "WARC/1.0"
+    VERSION18 = "WARC/0.18"
+    VERSION17 = "WARC/0.17"
+    RESPONSE = "response"
+    REQUEST = "request"
+    METADATA = "metadata"
+    CONVERSION = "conversion"
+    WARCINFO = "warcinfo"
 
     def __init__(self, version=VERSION, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self,headers,content,errors) 
