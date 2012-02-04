@@ -142,7 +142,10 @@ class HTTPMessage(object):
         return self.mode in ('end', 'body')
 
     def complete(self):
-        return self.mode =='end'
+        """Checks whether the input stream is at the end, i.e. if the
+        parser is expecting no more input."""
+
+        return self.mode == 'end'
 
     def feed_line(self, text):
         """Feed text into the buffer, returning the first line found
@@ -161,7 +164,8 @@ class HTTPMessage(object):
         return line, text
 
     def feed_length(self, text, remaining):
-        """ feed (at most remaining bytes) text to buffer, returning leftovers """
+        """Feed (at most remaining bytes) text to buffer, returning
+        leftovers."""
         body, text = text[:remaining], text[remaining:]
         remaining -= len(body)
         self.buffer.extend(body)
@@ -169,6 +173,8 @@ class HTTPMessage(object):
         return remaining, text
 
     def feed_start(self, text):
+        """Feed text to the parser while it is in the 'start'
+        state."""
         line, text = self.feed_line(text)
         if line is not None:
             if line not in NEWLINES:
@@ -178,6 +184,8 @@ class HTTPMessage(object):
         return text
 
     def feed_headers(self, text):
+        """Feed text to the parser while it is in the 'headers'
+        state."""
         while text:
             line, text = self.feed_line(text)
             if line is not None:
@@ -189,23 +197,27 @@ class HTTPMessage(object):
         return text
 
     def get_message(self):
+        """Returns the contents of the input buffer."""
         return str(self.buffer)
 
-
     def get_decoded_message(self):
+        """Return the input stream reconstructed from the parsed
+        data."""
         buf = bytearray()
         self.write_decoded_message(buf)
         return str(buf)
 
     def write_message(self, buf):
+        #TODO: No idea what this does, looks broken
         self.header.write(buf)
         buf.extend('\r\n')
         self.write_body(buf)
 
     def write_decoded_message(self, buf):
+        """Writes the parsed data to the buffer passed."""
         self.header.write_decoded(buf)
         if self.header.has_body():
-            length = sum(l for o,l in self.body_chunks)
+            length = sum(l for o, l in self.body_chunks)
             buf.extend('Content-Length: %d\r\n'%length)
         body = self.get_body()
         if self.header.encoding and body:
@@ -215,20 +227,23 @@ class HTTPMessage(object):
                 try:
                     body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
                 except zlib.error:
-                    buf.extend('Content-Encoding: %s\r\n' % self.header.encoding)
+                    encoding_header = "Content-Encoding: %s\r\n" \
+                        % self.header.encoding
+                    buf.extend(encoding_header)
         buf.extend('\r\n')
         buf.extend(body)
 
-
     def get_body(self):
+        """Returns the body of the HTTP message."""
         buf = bytearray()
         self.write_body(buf)
         return str(buf)
 
     def write_body(self, buf):
+        """Writes the body of the HTTP message to the passed
+        buffer."""
         for offset, length in self.body_chunks:
             buf.extend(self.buffer[offset:offset+length])
-
             
 class ChunkReader(object):
     def __init__(self):
