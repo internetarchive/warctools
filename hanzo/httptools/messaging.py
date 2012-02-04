@@ -121,7 +121,7 @@ class HTTPMessage(object):
                 self.body_chunks = ( (offset, length+len(text)), )
                 text = ''
 
-        return  text
+        return text
 
     def close(self):
         """Mark the end of the input stream and finish parsing."""
@@ -145,12 +145,13 @@ class HTTPMessage(object):
         return self.mode =='end'
 
     def feed_line(self, text):
-        """ feed text into the buffer, returning the first line found (if found yet)"""
+        """Feed text into the buffer, returning the first line found
+        (if found yet)"""
         self.buffer.extend(text)
         pos = self.buffer.find('\n', self.offset)
         if pos > -1:
-            pos+=1
-            text =str(self.buffer[pos:])
+            pos += 1
+            text = str(self.buffer[pos:])
             del self.buffer[pos:]
             line = str(self.buffer[self.offset:])
             self.offset = len(self.buffer)
@@ -175,7 +176,7 @@ class HTTPMessage(object):
                 self.mode = 'headers'
 
         return text
-                
+
     def feed_headers(self, text):
         while text:
             line, text = self.feed_line(text)
