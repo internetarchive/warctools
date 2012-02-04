@@ -42,6 +42,7 @@ class GetChar(unittest2.TestCase):
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
         self.assertEqual(get_response, p.get_decoded_message())
+        self.assertEqual("test", p.get_body())
 
 class GetLines(unittest2.TestCase):
     """Test basic GET request parsing. Single line at a time."""
