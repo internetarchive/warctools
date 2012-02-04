@@ -19,7 +19,6 @@ class ParseError(StandardError):
     pass
 
 from hanzo.httptools.semantics import Codes, Methods
-from hanzo.warctools import log
 
 NEWLINES=('\r\n', '\n')
 
