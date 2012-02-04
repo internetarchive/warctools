@@ -264,46 +264,59 @@ class ChunkReader(object):
         elif self.mode == 'end':
             return 0, None
 
+    def feed_start(self, parser, text):
+        """Feed text into the ChunkReader when the mode is 'start'."""
+                
+        line, text = parser.feed_line(text)
+        offset = len(parser.buffer)
+
+        if line is not None:
+            chunk = int(line.split(';',1)[0], 16)
+            parser.body_chunks.append((offset, chunk))
+            self.remaining = chunk
+            if chunk == 0:
+                self.mode = 'trailer'
+            else:
+                self.mode = 'chunk'
+
+        return text
+
+    def feed_chunk(self, parser, text):
+        """Feed text into the ChunkReader when the mode is 'chunk'."""
+        if self.remaining > 0: 
+            self.remaining, text = parser.feed_length(text, self.remaining)
+        if self.remaining == 0:
+            end_of_chunk, text = parser.feed_line(text)
+            if end_of_chunk:
+                self.mode = 'start'
+
+        return text
+
+    def feed_trailer(self, parser, text):
+        """Feed text into the ChunkReader when the mode is
+        'trailer'."""
+        line, text = parser.feed_line(text)
+        if line is not None:
+            parser.header.add_trailer_line(line)
+            if line in NEWLINES:
+                self.mode = 'end'
+
+        return text
+
     def feed(self, parser, text):
         """Feed text into the ChunkReader."""
         while text:
             if self.mode == 'start':
-                
-                line, text = parser.feed_line(text)
-                offset = len(parser.buffer)
-
-                #print >> sys.stderr, line, text
-                if line is not None:
-                    chunk = int(line.split(';',1)[0], 16)
-                    parser.body_chunks.append((offset, chunk))
-                    self.remaining = chunk
-                    if chunk == 0:
-                        self.mode = 'trailer'
-                    else:
-                        self.mode = 'chunk'
-                #print self.mode, repr(text)
+                text = self.feed_start(parser, text)
 
             if text and self.mode == 'chunk':
-                #print self.mode, repr(text), self.remaining
-                if self.remaining > 0: 
-                    self.remaining, text = parser.feed_length(text, self.remaining)
-                if self.remaining == 0:
-                    end_of_chunk, text = parser.feed_line(text)
-                    #print 'end',end_of_chunk
-                    if end_of_chunk:
-                        #print 'ended'
-                        self.mode = 'start'
-                #print self.mode, repr(text)
+                text = self.feed_chunk(parser, text)
 
             if text and self.mode == 'trailer':
-                line, text = parser.feed_line(text)
-                if line is not None:
-                    parser.header.add_trailer_line(line)
-                    if line in NEWLINES:
-                        self.mode = 'end'
+                text = self.feed_trailer(parser, text)
 
             if self.mode == 'end':
-                parser.mode ='end'
+                parser.mode = 'end'
                 break
 
         return text
