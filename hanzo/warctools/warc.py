@@ -59,14 +59,16 @@ class WarcRecord(ArchiveRecord):
         """
         out.write(self.version)
         out.write(nl)
-        for k,v in self.headers:
-            if k not in (self.CONTENT_TYPE, self.CONTENT_LENGTH, self.BLOCK_DIGEST):
+        for k, v in self.headers:
+            if k not in (self.CONTENT_TYPE,
+                         self.CONTENT_LENGTH,
+                         self.BLOCK_DIGEST):
                 out.write(k)
                 out.write(": ")
                 out.write(v)
                 out.write(nl)
         content_type, content_buffer = self.content
-        content_buffer=buffer(content_buffer)
+        content_buffer = buffer(content_buffer)
         if content_type:
             out.write(self.CONTENT_TYPE)
             out.write(": ")
@@ -84,7 +86,7 @@ class WarcRecord(ArchiveRecord):
         block_hash = hashlib.sha256()
         block_hash.update(content_buffer)
 
-        digest= "sha256:%s"%block_hash.hexdigest()
+        digest = "sha256:%s" % block_hash.hexdigest()
 
         out.write(self.BLOCK_DIGEST)
         out.write(": ")
@@ -110,32 +112,37 @@ class WarcRecord(ArchiveRecord):
         return WarcParser()
 
 def rx(pat):
-    return re.compile(pat,flags=re.IGNORECASE)
+    """Helper to compile regexps with IGNORECASE option set."""
+    return re.compile(pat, flags=re.IGNORECASE)
 
-version_rx = rx(r'^(?P<prefix>.*?)(?P<version>\s*WARC/(?P<number>.*?))' '(?P<nl>\r\n|\r|\n)\\Z')
+version_rx = rx(r'^(?P<prefix>.*?)(?P<version>\s*WARC/(?P<number>.*?))' 
+                '(?P<nl>\r\n|\r|\n)\\Z')
 # a header is key: <ws> value plus any following lines with leading whitespace
 header_rx = rx(r'^(?P<name>.*?):\s?(?P<value>.*?)' '(?P<nl>\r\n|\r|\n)\\Z')
 value_rx = rx(r'^\s+(?P<value>.+?)' '(?P<nl>\r\n|\r|\n)\\Z')
-nl_rx=rx('^(?P<nl>\r\n|\r|\n\\Z)')
-length_rx = rx('^'+WarcRecord.CONTENT_LENGTH+'$')
-type_rx = rx('^'+WarcRecord.CONTENT_TYPE+'$')
+nl_rx = rx('^(?P<nl>\r\n|\r|\n\\Z)')
+length_rx = rx('^'+WarcRecord.CONTENT_LENGTH+'$') # pylint: disable-msg=E1101
+type_rx = rx('^'+WarcRecord.CONTENT_TYPE+'$')     # pylint: disable-msg=E1101
 
 required_headers = set((
-    WarcRecord.TYPE.lower(), 
-    WarcRecord.ID.lower(), 
-    WarcRecord.CONTENT_LENGTH.lower(), 
-    WarcRecord.DATE.lower(),
-))
+        WarcRecord.TYPE.lower(),           # pylint: disable-msg=E1101
+        WarcRecord.ID.lower(),             # pylint: disable-msg=E1101
+        WarcRecord.CONTENT_LENGTH.lower(), # pylint: disable-msg=E1101
+        WarcRecord.DATE.lower(),           # pylint: disable-msg=E1101
+        ))
 
 class WarcParser(ArchiveParser):
-    KNOWN_VERSIONS=set(('1.0', '0.17', '0.18')) 
+    KNOWN_VERSIONS = set(('1.0', '0.17', '0.18')) 
+
     def __init__(self):
         self.trailing_newlines = 0
 
-    def parse(self,stream, offset):
-        """Reads a warc record from the stream, returns a tuple (record, errors). 
-        Either records is null or errors is null. Any record-specific errors are 
-        contained in the record - errors is only used when *nothing* could be parsed"""
+    def parse(self, stream, offset):
+        """Reads a warc record from the stream, returns a tuple
+        (record, errors).  Either records is null or errors is
+        null. Any record-specific errors are contained in the record -
+        errors is only used when *nothing* could be parsed"""
+        # pylint: disable-msg=E1101
         errors = []
         version = None
         # find WARC/.*
@@ -145,10 +152,12 @@ class WarcParser(ArchiveParser):
             while line:
                 match = nl_rx.match(line)
                 if match and newlines > 0:
-                    if offset is not None: offset+=len(line)
-                    newlines-=1
+                    if offset is not None:
+                        offset += len(line)
+                    newlines -= 1
                     if match.group('nl') != '\x0d\x0a':
-                        errors.append(('incorrect trailing newline', match.group('nl')))
+                        errors.append(('incorrect trailing newline',
+                                       match.group('nl')))
                     line = stream.readline()
                     if newlines == 0:
                         break
@@ -156,7 +165,7 @@ class WarcParser(ArchiveParser):
                     break
                     
             if newlines > 0:
-                errors+=('less than two terminating newlines at end of previous record, missing', newlines)
+                errors += ('less than two terminating newlines at end of previous record, missing', newlines)
 
         while line:
             match = version_rx.match(line)
@@ -175,7 +184,7 @@ class WarcParser(ArchiveParser):
                 line = stream.readline()
         if not line:
             if version:
-                errors.append('warc version but no headers', version)
+                errors.append(('warc version but no headers', version))
             self.trailing_newlines = 0
             return (None, errors, offset)
         if line:
@@ -254,20 +263,23 @@ class WarcParser(ArchiveParser):
                         #print length, content_length, line
                     #else:
                         # print 'last line of content', repr(line)
-                    content="".join(content)
-                    content, line = content[0:content_length], content[content_length:]
+                    content = "".join(content)
+                    content, line = \
+                        content[0:content_length], content[content_length:]
                     if len(content)!= content_length:
-                        record.error('content length mismatch (is, claims)', len(content), content_length)
+                        record.error('content length mismatch (is, claims)',
+                                     len(content), content_length)
                     record.content = (content_type, content)
                     if nl_rx.match(line):
                         self.trailing_newlines = 1
                     else:
                         self.trailing_newlines = 2
-            else:   
+            else:
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
                 self.trailing_newlines = 2
 
-            # Fixed: READLINE BUG - eats trailing terminating newlines when content doesn't have a \n
+            # Fixed: READLINE BUG - eats trailing terminating newlines
+            # when content doesn't have a \n
 
             #print 'read content', repr(line)
             # have read trailing newlines
@@ -286,9 +298,6 @@ class WarcParser(ArchiveParser):
 
             # not brilliant but hey-ho
 
-
-
-
             return (record, (), offset)
 
     def trim(self, stream):
@@ -303,8 +312,9 @@ class WarcParser(ArchiveParser):
                 match = nl_rx.match(line)
                 if match:
                     if match.group('nl') != '\x0d\x0a':
-                        errors.append(('incorrect trailing newline', match.group('nl')))
-                    newlines-=1
+                        errors.append('incorrect trailing newline',
+                                      match.group('nl'))
+                    newlines -= 1
                     #print 'newline'
                     if newlines == 0:
                         break
@@ -315,7 +325,10 @@ class WarcParser(ArchiveParser):
                     errors.append(('trailing data after content', line))
                 line = stream.readline()
             if newlines > 0:
-                errors+=('less than two terminating newlines at end of record, missing', newlines)
+                errors.append(
+                    ('less than two terminating newlines at end of record, missing',
+                     newlines)
+                    )
 
         return errors
 
@@ -326,6 +339,7 @@ register_record_type(version_rx, WarcRecord)
 register_record_type(blank_rx, WarcRecord)
 
 def make_response(id, date, url, content, request_id):
+    # pylint: disable-msg=E1101
     headers = [
             (WarcRecord.TYPE, WarcRecord.RESPONSE),
             (WarcRecord.ID, id),
@@ -336,11 +350,12 @@ def make_response(id, date, url, content, request_id):
     if request_id:
         headers.append((WarcRecord.CONCURRENT_TO, request_id))
         
-    record=WarcRecord(headers=headers, content=content)
+    record = WarcRecord(headers=headers, content=content)
 
     return record
 
 def make_request(request_id, date, url, content, response_id):
+    # pylint: disable-msg=E1101
     headers = [
             (WarcRecord.TYPE, WarcRecord.REQUEST),
             (WarcRecord.ID, request_id),
@@ -351,11 +366,12 @@ def make_request(request_id, date, url, content, response_id):
     if response_id:
         headers.append((WarcRecord.CONCURRENT_TO, response_id))
         
-    record=WarcRecord(headers=headers, content=content)
+    record = WarcRecord(headers=headers, content=content)
 
     return record
 
 def make_metadata(meta_id, date, content, concurrent_to=None, url=None):
+    # pylint: disable-msg=E1101
     headers = [
             (WarcRecord.TYPE, WarcRecord.METADATA),
             (WarcRecord.ID, meta_id),
@@ -368,12 +384,13 @@ def make_metadata(meta_id, date, content, concurrent_to=None, url=None):
     if url:
         headers.append((WarcRecord.URL, url))
         
-    record=WarcRecord(headers=headers, content=content)
+    record = WarcRecord(headers=headers, content=content)
 
     return record
 
 
 def make_conversion(conv_id, date, content, refers_to=None, url=None):
+    # pylint: disable-msg=E1101
     headers = [
             (WarcRecord.TYPE, WarcRecord.CONVERSION),
             (WarcRecord.ID, conv_id),
@@ -386,10 +403,9 @@ def make_conversion(conv_id, date, content, refers_to=None, url=None):
     if url:
         headers.append((WarcRecord.URL, url))
         
-    record=WarcRecord(headers=headers, content=content)
+    record = WarcRecord(headers=headers, content=content)
 
     return record
-
 
 
 def warc_datetime_str(d):
