@@ -41,7 +41,7 @@ load-plugins=
 
 # Enable all checker(s) except those with the given id(s). This option
 # conflicts with the enable-checker option
-disable-checker=C0103
+disable-checker=CO103
 
 # Enable all messages in the listed categories (IRCWEF).
 #enable-msg-cat=
