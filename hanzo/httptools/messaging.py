@@ -15,11 +15,11 @@ import sys
 import zlib
 
 class ParseError(StandardError):
+    """Baseclass for all http parsing errors"""
     pass
 
-from .semantics import Codes, Methods
+from hanzo.httptools.semantics import Codes, Methods
 from hanzo.warctools import log
-
 
 NEWLINES=('\r\n', '\n')
 
