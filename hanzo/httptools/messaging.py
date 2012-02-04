@@ -1,5 +1,5 @@
-""" A set of stream oriented parsers for http requests and responses, 
-inline with the current draft recommendations from the http working group.
+"""A set of stream oriented parsers for http requests and responses, inline
+with the current draft recommendations from the http working group.
 
 http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-17
 
@@ -21,9 +21,12 @@ from hanzo.httptools.semantics import Codes, Methods
 
 NEWLINES = ('\r\n', '\n')
 
+
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
+
     CONTENT_TYPE = "application/http"
+
     def __init__(self, header):
         self.buffer = bytearray()
         self.offset = 0
@@ -60,9 +63,9 @@ class HTTPMessage(object):
                 return  ''
             elif terminator == '\r\n':
                 text = fd.readLine()
-            elif length <0:
+            elif length < 0:
                 text = fd.read()
-            elif length >0:
+            elif length > 0:
                 text = fd.read(length)
             unread = self.feed(text)
             if unread:
@@ -115,7 +118,7 @@ class HTTPMessage(object):
                 #print >> sys.stderr, 'feeding', text[:50]
                 text = self.body_reader.feed(self, text)
             else:
-                ( (offset, length), ) = self.body_chunks
+                ((offset, length),) = self.body_chunks
                 self.buffer.extend(text)
                 self.offset = len(self.buffer)
                 self.body_chunks = ( (offset, length+len(text)), )
@@ -142,14 +145,14 @@ class HTTPMessage(object):
         return self.mode in ('end', 'body')
 
     def complete(self):
-        """Checks whether the input stream is at the end, i.e. if the
-        parser is expecting no more input."""
+        """Checks whether the input stream is at the end, i.e. if the parser
+        is expecting no more input."""
 
         return self.mode == 'end'
 
     def feed_line(self, text):
-        """Feed text into the buffer, returning the first line found
-        (if found yet)"""
+        """Feed text into the buffer, returning the first line found (if found
+        yet)"""
         self.buffer.extend(text)
         pos = self.buffer.find('\n', self.offset)
         if pos > -1:
@@ -173,8 +176,7 @@ class HTTPMessage(object):
         return remaining, text
 
     def feed_start(self, text):
-        """Feed text to the parser while it is in the 'start'
-        state."""
+        """Feed text to the parser while it is in the 'start' state."""
         line, text = self.feed_line(text)
         if line is not None:
             if line not in NEWLINES:
@@ -271,7 +273,7 @@ class ChunkReader(object):
         offset = len(parser.buffer)
 
         if line is not None:
-            chunk = int(line.split(';',1)[0], 16)
+            chunk = int(line.split(';', 1)[0], 16)
             parser.body_chunks.append((offset, chunk))
             self.remaining = chunk
             if chunk == 0:
@@ -332,12 +334,14 @@ class LengthReader(object):
         if self.remaining > 0: 
             self.remaining, text = parser.feed_length(text, self.remaining)
         if self.remaining <= 0:
-            parser.mode ='end'
+            parser.mode = 'end'
         return text
             
 
 class HTTPHeader(object):
-    STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding', 'TE', 'Expect', 'Trailer')
+    STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding',
+                     'TE', 'Expect', 'Trailer')
+
     def __init__(self, ignore_headers):
         self.headers = []
         self.keep_alive = False
@@ -345,7 +349,7 @@ class HTTPHeader(object):
         self.content_length = None
         self.encoding = None
         self.trailers = []
-        self.expect_continue=False
+        self.expect_continue = False
         self.ignore_headers = set(x.lower() for x in ignore_headers)
 
     def has_body(self):
@@ -363,23 +367,23 @@ class HTTPHeader(object):
         pass
 
     def write_headers(self, buf, strip_headers=()):
-        for k,v in self.headers:
+        for k, v in self.headers:
             if k not in strip_headers:
-                buf.extend('%s: %s\r\n'%(k,v))
-        for k,v in self.trailers:
+                buf.extend('%s: %s\r\n' % (k, v))
+        for k, v in self.trailers:
             if k not in strip_headers:
-                buf.extend('%s: %s\r\n'%(k,v))
+                buf.extend('%s: %s\r\n' % (k, v))
 
     def add_trailer_line(self, line):
         if line.startswith(' ') or line.startswith('\t'):
-            k,v = self.trailers.pop()
+            k, v = self.trailers.pop()
             line = line.strip()
-            v = "%s %s"%(v, line)
-            self.trailers.append((k,v))
+            v = "%s %s" % (v, line)
+            self.trailers.append((k, v))
         elif line in NEWLINES:
             pass
         else:
-            name, value = line.split(':',1)
+            name, value = line.split(':', 1)
             name = name.strip()
             value = value.strip()
             self.trailers.append((name, value))
@@ -389,16 +393,15 @@ class HTTPHeader(object):
         
     def add_header_line(self, line):
         if line.startswith(' ') or line.startswith('\t'):
-            k,v = self.headers.pop()
+            k, v = self.headers.pop()
             line = line.strip()
-            v = "%s %s"%(v, line)
+            v = "%s %s" % (v, line)
             self.add_header(k, v)
         
         elif line in NEWLINES:
             for name, value in self.headers:
                 name = name.lower()
                 value = value.lower()
-
                 
                 # todo handle multiple instances
                 # of these headers
@@ -428,7 +431,7 @@ class HTTPHeader(object):
 
         else:
             #print line
-            name, value = line.split(':',1)
+            name, value = line.split(':', 1)
             name = name.strip()
             value = value.strip()
             self.add_header(name, value)
@@ -441,8 +444,11 @@ class HTTPHeader(object):
         if self.mode == 'length':
             return self.content_length
 
+url_rx = re.compile(
+    '(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)'
+    '(?P<path>.*)',
+    re.I)
 
-url_rx = re.compile('(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)(?P<path>.*)', re.I)
 class RequestHeader(HTTPHeader):
     def __init__(self, ignore_headers=()):
         HTTPHeader.__init__(self, ignore_headers=ignore_headers)
@@ -453,11 +459,10 @@ class RequestHeader(HTTPHeader):
         self.scheme = 'http'
         self.port = 80
         self.host = ''
-    
-
-        
+            
     def set_start_line(self, line):
-        self.method, self.target_uri, self.version = line.rstrip().split(' ',2)
+        self.method, self.target_uri, self.version = line.rstrip().split(' ', 2)
+
         if self.method.upper() == "CONNECT":
             # target_uri = host:port
             self.host, self.port = self.target_uri.split(':')
@@ -477,10 +482,8 @@ class RequestHeader(HTTPHeader):
                     else:
                         self.target_uri = '/'
 
-            
-        if self.version =='HTTP/1.0':
+        if self.version == 'HTTP/1.0':
             self.keep_alive = False
-
 
     def has_body(self):
         return self.mode in ('chunked', 'length')
@@ -517,9 +520,9 @@ class ResponseHeader(HTTPHeader):
         return self.request.scheme
     
     def set_start_line(self, line):
-        self.version, self.code, self.phrase = line.rstrip().split(' ',2)
+        self.version, self.code, self.phrase = line.rstrip().split(' ', 2)
         self.code = int(self.code)
-        if self.version =='HTTP/1.0':
+        if self.version == 'HTTP/1.0':
             self.keep_alive = False
 
     def has_body(self):
@@ -535,15 +538,17 @@ class ResponseHeader(HTTPHeader):
 
 
 class RequestMessage(HTTPMessage):
-    CONTENT_TYPE="%s;msgtype=request"%HTTPMessage.CONTENT_TYPE
+    CONTENT_TYPE = "%s;msgtype=request" % HTTPMessage.CONTENT_TYPE
     def __init__(self, ignore_headers=()):
         HTTPMessage.__init__(self, RequestHeader(ignore_headers=ignore_headers))
 
 class ResponseMessage(HTTPMessage):
-    CONTENT_TYPE="%s;msgtype=response"%HTTPMessage.CONTENT_TYPE
+    CONTENT_TYPE = "%s;msgtype=response" % HTTPMessage.CONTENT_TYPE
     def __init__(self, request, ignore_headers=()):
         self.interim = []
-        HTTPMessage.__init__(self, ResponseHeader(request.header, ignore_headers=ignore_headers))
+        HTTPMessage.__init__(self, ResponseHeader(request.header,
+                                                  ignore_headers=ignore_headers)
+                             )
 
     def got_continue(self):
         return bool(self.interim)
