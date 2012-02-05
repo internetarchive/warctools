@@ -10,7 +10,7 @@ setup(name='hanzo-warc-tools',
       description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
       author='Thomas Figg',
       author_email='thomas.figg@hanzoarchives.com',
-      packages=['hanzo.warctools','hanzo.httptools'],
+      packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
       scripts=glob.glob('*warc*.py'),
       namespace_packages=["hanzo"]
      )
