@@ -10,9 +10,9 @@ from hanzo.warctools.archive_detect import register_record_type
 #Archive-length<nl> 
 # 
 @ArchiveRecord.HEADERS(
-    URL='URL',
-    IP='IP-address',
-    DATE='Archive-date',
+    URL = 'URL',
+    IP = 'IP-address',
+    DATE = 'Archive-date',
     CONTENT_TYPE = 'Content-type',
     CONTENT_LENGTH = 'Archive-length',
     RESULT_CODE = 'Result-code',
@@ -22,6 +22,7 @@ from hanzo.warctools.archive_detect import register_record_type
     FILENAME = 'Filename',
 )
 class ArcRecord(ArchiveRecord):
+    """Represents a record in an arc file."""
     def __init__(self, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self, headers, content, errors) 
 
@@ -30,27 +31,34 @@ class ArcRecord(ArchiveRecord):
         return "response"
 
     def _write_to(self, out, nl):
+        #TODO: empty method?
         pass
 
     @classmethod
-    def make_parser(self):
+    def make_parser(cls):
+        """Constructs a parser for arc records."""
         return ArcParser()
 
 
 class ArcRecordHeader(ArcRecord):
-
+    """Represents the headers in an arc record."""
     def __init__(self, headers=None, content=None, errors=None, version=None,
                  raw_headers=None):
         ArcRecord.__init__(self, headers, content, errors) 
         self.version = version
         self.raw_headers = raw_headers
+
     @property
     def type(self):
         return "filedesc"
+
     def raw(self):
+        """Return the raw representation of this record."""
         return "".join(self.raw_headers) + self.content[1]
 
 def rx(pat):
+    """Helper function to compile a regular expression with the IGNORECASE
+    flag."""
     return re.compile(pat, flags=re.IGNORECASE)
 
 nl_rx = rx('^\r\n|\r|\n$')
@@ -58,6 +66,8 @@ length_rx = rx('^%s$' % ArcRecord.CONTENT_LENGTH) #pylint: disable-msg=E1101
 type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
 
 class ArcParser(ArchiveParser):
+    """A parser for arc archives."""
+
     def __init__(self):
         self.version = 0
         # we don't know which version to parse initially - a v1 or v2 file so
@@ -72,14 +82,16 @@ class ArcParser(ArchiveParser):
         self.trailing_newlines = 0
 
     def parse(self, stream, offset):
+        """Parses a stream as an arc archive and returns an Arc record along
+        with the offset in the stream of the end of the record."""
         record = None
         content_type = None
         content_length = None
         line = stream.readline()
         while not line.rstrip():
             if not line:
-                return (None,(), offset)
-            self.trailing_newlines-=1
+                return (None, (), offset)
+            self.trailing_newlines -= 1
             line = stream.readline()
 
         if line.startswith('filedesc:'):
@@ -136,8 +148,8 @@ class ArcParser(ArchiveParser):
             while length < content_length:
                 line = stream.readline()
                 if not line:
-                       # print 'no more data' 
-                        break
+                    # print 'no more data' 
+                    break
                 content.append(line)
                 length += len(line)
             content = "".join(content)
