@@ -21,12 +21,16 @@ class Methods(object):
 
 def range_collection(func):
     """Returns an object (x) that responds to foo in x,"""
+
     class Range(object):
         def __contains__(self, item):
             return func(item)
+
     return Range()
                 
+
 class Codes(object):
+    #pylint: disable-msg=e0213
     Continue = 100
     switching_protocols = 101
 
