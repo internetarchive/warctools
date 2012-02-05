@@ -3,8 +3,7 @@ import unittest2
 
 from hanzo.httptools.messaging import \
     RequestMessage, \
-    ResponseMessage, \
-    ChunkReader
+    ResponseMessage
 
 get_request_lines = [
         "GET / HTTP/1.1",
@@ -22,8 +21,10 @@ get_response_lines = [
         ]
 get_response = "\r\n".join(get_response_lines)
 
+
 class GetChar(unittest2.TestCase):
     """Test basic GET request parsing. Single character at a time."""
+
     def runTest(self):
         """Attempts to parse the contents of get_request and
         get_response."""
@@ -47,8 +48,10 @@ class GetChar(unittest2.TestCase):
         self.assertEqual(get_response, p.get_decoded_message())
         self.assertEqual("tests", p.get_body())
 
+
 class GetLines(unittest2.TestCase):
     """Test basic GET request parsing. Single line at a time."""
+
     def runTest(self):
         """Attempts to parse get_request_lines, i.e. get_request line
         at a time."""
@@ -79,16 +82,17 @@ class GetLines(unittest2.TestCase):
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
-        
+
         self.assertEqual(get_response, p.get_decoded_message())
 
-head_request = "\r\n".join( [
+
+head_request = "\r\n".join([
     "HEAD / HTTP/1.1",
     "Host: example.org",
     "",
     "",
 ])
-head_response = "\r\n".join( [
+head_response = "\r\n".join([
     "HTTP/1.1 200 OK",
     "Host: example.org",
     "Content-Length: 5",
@@ -98,15 +102,18 @@ head_response = "\r\n".join( [
 
 
 class HeadTest(unittest2.TestCase):
+    """Tests parsing of HEAD requests and responses."""
 
     def runTest(self):
+        """Constructs a RequestMessage and ResponseMessage and uses them to
+        parse HEAD messages."""
         p = RequestMessage()
-        text=p.feed(head_request)
+        text = p.feed(head_request)
 
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
         self.assertEqual(head_request, p.get_decoded_message())
-        
+
         p = ResponseMessage(p)
         text = p.feed(head_response)
 
@@ -114,9 +121,10 @@ class HeadTest(unittest2.TestCase):
         self.assertTrue(p.complete())
         self.assertEqual(head_response, p.get_decoded_message())
 
+
 class PostTestChunked(unittest2.TestCase):
     """Tests the parser with a POST request with chunked encoding."""
-    post_request = "\r\n".join( [
+    post_request = "\r\n".join([
             "POST / HTTP/1.1",
             "Host: example.org",
             "Transfer-Encoding: chunked",
@@ -127,7 +135,7 @@ class PostTestChunked(unittest2.TestCase):
             "",
             "",
             ])
-    post_response = "\r\n".join( [
+    post_response = "\r\n".join([
             "HTTP/1.1 100 Continue",
             "Host: example.org",
             "",
@@ -147,7 +155,7 @@ class PostTestChunked(unittest2.TestCase):
 
         p = ResponseMessage(p)
         text = p.feed(self.post_response)
-        
+
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
 
@@ -155,7 +163,7 @@ class PostTestChunked(unittest2.TestCase):
 class PostTestChunkedEmpty(unittest2.TestCase):
     """Tests the parser with a POST request with chunked encoding and
     an empty body."""
-    post_request = "\r\n".join( [
+    post_request = "\r\n".join([
             "POST / HTTP/1.1",
             "Host: example.org",
             "Transfer-Encoding: chunked",
@@ -164,7 +172,7 @@ class PostTestChunkedEmpty(unittest2.TestCase):
             "",
             "",
             ])
-    post_response = "\r\n".join( [
+    post_response = "\r\n".join([
             "HTTP/1.1 100 Continue",
             "Host: example.org",
             "",
@@ -184,10 +192,9 @@ class PostTestChunkedEmpty(unittest2.TestCase):
 
         p = ResponseMessage(p)
         text = p.feed(self.post_response)
-        
+
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
 
 if __name__ == '__main__':
     unittest2.main()
-
