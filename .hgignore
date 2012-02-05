@@ -7,3 +7,8 @@ syntax: glob
 *.gz
 login.txt
 .DS_Store
+build/*
+dist/*
+hanzo_warc_tools.egg-info/*
+*~
+*.orig
