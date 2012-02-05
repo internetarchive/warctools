@@ -12,5 +12,6 @@ setup(name='hanzo-warc-tools',
       author_email='thomas.figg@hanzoarchives.com',
       packages=['hanzo.warctools','hanzo.httptools'],
       scripts=glob.glob('*warc*.py'),
+      namespace_packages=["hanzo"]
      )
 
