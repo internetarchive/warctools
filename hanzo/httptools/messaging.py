@@ -13,6 +13,7 @@ Missing:
 import re
 import zlib
 
+
 class ParseError(StandardError):
     """Baseclass for all http parsing errors"""
     pass
@@ -31,7 +32,6 @@ class HTTPMessage(object):
         self.buffer = bytearray()
         self.offset = 0
         self.header = header
-        
         self.body_chunks = []
         self.mode = 'start'
         self.body_reader = None
@@ -88,7 +88,6 @@ class HTTPMessage(object):
         if self.mode == 'incomplete':
             return 0, None
 
-
     def feed(self, text):
         """Push more text from the input stream into the parser."""
         if text and self.mode == 'start':
@@ -121,7 +120,7 @@ class HTTPMessage(object):
                 ((offset, length),) = self.body_chunks
                 self.buffer.extend(text)
                 self.offset = len(self.buffer)
-                self.body_chunks = ( (offset, length+len(text)), )
+                self.body_chunks = ((offset, length + len(text)),)
                 text = ''
 
         return text
@@ -130,13 +129,13 @@ class HTTPMessage(object):
         """Mark the end of the input stream and finish parsing."""
         if (self.body_reader is None and self.mode == 'body'):
             self.mode = 'end'
-        
+
         elif self.mode != 'end':
             if self.body_chunks:
                 # check for incomplete in body_chunks
                 offset, length = self.body_chunks.pop()
                 position = len(self.buffer)
-                length = min(length, position-offset)
+                length = min(length, position - offset)
                 self.body_chunks.append((offset, length))
             self.mode = 'incomplete'
 
@@ -220,10 +219,10 @@ class HTTPMessage(object):
         self.header.write_decoded(buf)
         if self.header.has_body():
             length = sum(l for o, l in self.body_chunks)
-            buf.extend('Content-Length: %d\r\n'%length)
+            buf.extend('Content-Length: %d\r\n' % length)
         body = self.get_body()
         if self.header.encoding and body:
-            try: 
+            try:
                 body = zlib.decompress(body)
             except zlib.error:
                 try:
@@ -245,10 +244,12 @@ class HTTPMessage(object):
         """Writes the body of the HTTP message to the passed
         buffer."""
         for offset, length in self.body_chunks:
-            buf.extend(self.buffer[offset:offset+length])
-            
+            buf.extend(self.buffer[offset:offset + length])
+
+
 class ChunkReader(object):
     """Reads the body of a HTTP message with chunked encoding."""
+
     def __init__(self):
         self.mode = "start"
         self.remaining = 0
@@ -260,7 +261,7 @@ class ChunkReader(object):
             if self.remaining == 0:
                 return None, '\r\n'
             else:
-                return self.remaining, None 
+                return self.remaining, None
         elif self.mode == 'trailer':
             return None, '\r\n'
         elif self.mode == 'end':
@@ -268,7 +269,6 @@ class ChunkReader(object):
 
     def feed_start(self, parser, text):
         """Feed text into the ChunkReader when the mode is 'start'."""
-                
         line, text = parser.feed_line(text)
         offset = len(parser.buffer)
 
@@ -285,7 +285,7 @@ class ChunkReader(object):
 
     def feed_chunk(self, parser, text):
         """Feed text into the ChunkReader when the mode is 'chunk'."""
-        if self.remaining > 0: 
+        if self.remaining > 0:
             self.remaining, text = parser.feed_length(text, self.remaining)
         if self.remaining == 0:
             end_of_chunk, text = parser.feed_line(text)
@@ -323,7 +323,9 @@ class ChunkReader(object):
 
         return text
 
+
 class LengthReader(object):
+
     def __init__(self, length):
         self.remaining = length
 
@@ -331,12 +333,12 @@ class LengthReader(object):
         return self.remaining, None
 
     def feed(self, parser, text):
-        if self.remaining > 0: 
+        if self.remaining > 0:
             self.remaining, text = parser.feed_length(text, self.remaining)
         if self.remaining <= 0:
             parser.mode = 'end'
         return text
-            
+
 
 class HTTPHeader(object):
     STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding',
@@ -390,19 +392,19 @@ class HTTPHeader(object):
 
     def add_header(self, name, value):
         self.headers.append((name, value))
-        
+
     def add_header_line(self, line):
         if line.startswith(' ') or line.startswith('\t'):
             k, v = self.headers.pop()
             line = line.strip()
             v = "%s %s" % (v, line)
             self.add_header(k, v)
-        
+
         elif line in NEWLINES:
             for name, value in self.headers:
                 name = name.lower()
                 value = value.lower()
-                
+
                 # todo handle multiple instances
                 # of these headers
                 if name in self.ignore_headers:
@@ -415,7 +417,7 @@ class HTTPHeader(object):
                     if self.mode == 'close':
                         self.content_length = int(value)
                         self.mode = 'length'
-                        
+
                 elif name == 'transfer-encoding':
                     if 'chunked' in value:
                         self.mode = 'chunked'
@@ -436,7 +438,6 @@ class HTTPHeader(object):
             value = value.strip()
             self.add_header(name, value)
 
-    
     def body_is_chunked(self):
         return self.mode == 'chunked'
 
@@ -449,7 +450,9 @@ url_rx = re.compile(
     '(?P<path>.*)',
     re.I)
 
+
 class RequestHeader(HTTPHeader):
+
     def __init__(self, ignore_headers=()):
         HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.method = ''
@@ -459,9 +462,10 @@ class RequestHeader(HTTPHeader):
         self.scheme = 'http'
         self.port = 80
         self.host = ''
-            
+
     def set_start_line(self, line):
-        self.method, self.target_uri, self.version = line.rstrip().split(' ', 2)
+        self.method, self.target_uri, self.version = \
+            line.rstrip().split(' ', 2)
 
         if self.method.upper() == "CONNECT":
             # target_uri = host:port
@@ -489,9 +493,13 @@ class RequestHeader(HTTPHeader):
         return self.mode in ('chunked', 'length')
 
     def write_decoded_start(self, buf):
-        buf.extend('%s %s %s\r\n'%(self.method, self.target_uri, self.version))
+        buf.extend('%s %s %s\r\n' % (self.method,
+                                     self.target_uri,
+                                     self.version))
+
 
 class ResponseHeader(HTTPHeader):
+
     def __init__(self, request, ignore_headers=()):
         HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.request = request
@@ -518,7 +526,7 @@ class ResponseHeader(HTTPHeader):
     @property
     def scheme(self):
         return self.request.scheme
-    
+
     def set_start_line(self, line):
         self.version, self.code, self.phrase = line.rstrip().split(' ', 2)
         self.code = int(self.code)
@@ -534,21 +542,25 @@ class ResponseHeader(HTTPHeader):
         return True
 
     def write_decoded_start(self, buf):
-        buf.extend('%s %d %s\r\n'%(self.version, self.code, self.phrase))
+        buf.extend('%s %d %s\r\n' % (self.version, self.code, self.phrase))
 
 
 class RequestMessage(HTTPMessage):
     CONTENT_TYPE = "%s;msgtype=request" % HTTPMessage.CONTENT_TYPE
+
     def __init__(self, ignore_headers=()):
-        HTTPMessage.__init__(self, RequestHeader(ignore_headers=ignore_headers))
+        HTTPMessage.__init__(self,
+                             RequestHeader(ignore_headers=ignore_headers))
+
 
 class ResponseMessage(HTTPMessage):
     CONTENT_TYPE = "%s;msgtype=response" % HTTPMessage.CONTENT_TYPE
+
     def __init__(self, request, ignore_headers=()):
         self.interim = []
-        HTTPMessage.__init__(self, ResponseHeader(request.header,
-                                                  ignore_headers=ignore_headers)
-                             )
+        HTTPMessage.__init__(self,
+                             ResponseHeader(request.header,
+                                            ignore_headers=ignore_headers))
 
     def got_continue(self):
         return bool(self.interim)
@@ -567,4 +579,3 @@ class ResponseMessage(HTTPMessage):
             self.body_reader = None
             text = HTTPMessage.feed(self, text)
         return text
-            
