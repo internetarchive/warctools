@@ -275,11 +275,23 @@ class WarcParser(ArchiveParser):
                         record.headers.append((WarcRecord.PAYLOAD_DIGEST, sha1_str))
 
                     content="".join(content)
-                    content, line = content[0:content_length], content[content_length:]
-                    if len(content)!= content_length:
-                        record.error('content length mismatch (is, claims)', len(content), content_length)
+
+                    if length > content_length:
+                        #line is the last line we read
+                        trailing_chars = line[-(length-content_length):]
+                    else:
+                        trailing_chars = ''
+
+                    #content, line = content[0:content_length], content[content_length:]
+                    content = content[0:content_length]
+
+                    #if len(content)!= content_length:
+                    if length < content_length:
+                        record.error('content length mismatch (is, claims)', length, content_length)
+
                     record.content = (content_type, content)
-                    if nl_rx.match(line):
+
+                    if nl_rx.match(trailing_chars):
                         self.trailing_newlines = 1
                     else:
                         self.trailing_newlines = 2
