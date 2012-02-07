@@ -1,6 +1,7 @@
 """An object to represent warc records, using the abstract record in record.py"""
 
 import re
+import base64
 import hashlib
 from .record import ArchiveRecord,ArchiveParser
 from .archive_detect import register_record_type
@@ -20,6 +21,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     IP_ADDRESS='WARC-IP-Address',
     FILENAME='WARC-Filename',
     WARCINFO_ID='WARC-Warcinfo-ID',
+    PAYLOAD_DIGEST = 'WARC-Payload-Digest',
 )
 class WarcRecord(ArchiveRecord):
     VERSION="WARC/1.0"
@@ -232,6 +234,18 @@ class WarcParser(ArchiveParser):
             # have read blank line following headers
 
             # read content
+
+            ### rajbot: if the WARC-Payload-Digest is not present, fabricate it.
+            ### We do this because we don't want to read large records into memory,
+            ### since this was exhasting memory and crashing for large payloads.
+            sha1_digest = None
+            if 'response' == record.type and 'application/http; msgtype=response' == content_type:
+                digest = record.get_header(WarcRecord.PAYLOAD_DIGEST)
+                if digest is None:
+                    sha1_digest = hashlib.sha1()
+                    parsed_http_header = False
+
+
             if content_length is not None:
                 if content_length > 0:
                     content=[]
@@ -243,9 +257,23 @@ class WarcParser(ArchiveParser):
                                 break
                         content.append(line)
                         length+=len(line)
+
+                        if sha1_digest:
+                            if parsed_http_header:
+                                if length <= content_length:
+                                    sha1_digest.update(line)
+                                else:
+                                    sha1_digest.update(line[:-(length-content_length)])
+                            elif nl_rx.match(line):
+                                parsed_http_header = True
+
                         #print length, content_length, line
                     #else:
                         # print 'last line of content', repr(line)
+                    if sha1_digest:
+                        sha1_str = 'sha1:'+base64.b32encode(sha1_digest.digest())
+                        record.headers.append((WarcRecord.PAYLOAD_DIGEST, sha1_str))
+
                     content="".join(content)
                     content, line = content[0:content_length], content[content_length:]
                     if len(content)!= content_length:
@@ -255,6 +283,7 @@ class WarcParser(ArchiveParser):
                         self.trailing_newlines = 1
                     else:
                         self.trailing_newlines = 2
+
             else:
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
                 self.trailing_newlines = 2
