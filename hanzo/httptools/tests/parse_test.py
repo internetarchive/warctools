@@ -85,6 +85,10 @@ class GetLines(unittest2.TestCase):
 
         self.assertEqual(get_response, p.get_decoded_message())
 
+        self.assertEqual(p.code, 200)
+        self.assertEqual(p.header.version, "HTTP/1.1")
+        self.assertEqual(p.header.phrase, "OK")
+
 
 head_request = "\r\n".join([
     "HEAD / HTTP/1.1",
@@ -120,6 +124,9 @@ class HeadTest(unittest2.TestCase):
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
         self.assertEqual(head_response, p.get_decoded_message())
+        self.assertEqual(p.code, 200)
+        self.assertEqual(p.header.version, "HTTP/1.1")
+        self.assertEqual(p.header.phrase, "OK")
 
 
 class PostTestChunked(unittest2.TestCase):
@@ -158,6 +165,9 @@ class PostTestChunked(unittest2.TestCase):
 
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
+        self.assertEqual(p.code, 204)
+        self.assertEqual(p.header.version, "HTTP/1.0")
+        self.assertEqual(p.header.phrase, "No Content")
 
 
 class PostTestChunkedEmpty(unittest2.TestCase):
@@ -195,6 +205,54 @@ class PostTestChunkedEmpty(unittest2.TestCase):
 
         self.assertEqual(text, '')
         self.assertTrue(p.complete())
+        self.assertEqual(p.code, 204)
+        self.assertEqual(p.header.version, "HTTP/1.0")
+        self.assertEqual(p.header.phrase, "No Content")
+
+
+class TestTwoPartStatus(unittest2.TestCase):
+    """This is a request taken from the wild that broke the crawler. The main
+    part being tested is the status line without a message."""
+
+    request = "\r\n".join([
+            "GET / HTTP/1.1",
+            "Host: example.org", # Name changed to protect the guilty
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3",
+            "Accept-Encoding: gzip,deflate,sdch",
+            "Accept-Language: en-US,en;q=0.8",
+            "Connection: keep-alive",
+            "Host: example.org",
+            "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7",
+            "",
+            "",
+            ])
+    response = "\r\n".join([
+            "HTTP/1.1 404",
+            "Cache-Control: no-cache",
+            "Content-Length: 0",
+            "Content-Type:image/gif",
+            "Pragma:no-cache",
+            "nnCoection: close",
+            "",
+            "",
+            ])
+
+    def runTest(self):
+        """Tests parsing of a broken response."""
+        p = RequestMessage()
+        text = p.feed(self.request)
+
+        self.assertEqual(text, '')
+        self.assertTrue(p.complete())
+
+        p = ResponseMessage(p)
+        text = p.feed(self.response)
+
+        self.assertEqual(text, '')
+        self.assertTrue(p.complete())
+        self.assertEqual(p.code, 404)
+        self.assertEqual(p.header.version, "HTTP/1.1")
 
 if __name__ == '__main__':
     unittest2.main()

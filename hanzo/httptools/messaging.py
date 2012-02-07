@@ -528,7 +528,10 @@ class ResponseHeader(HTTPHeader):
         return self.request.scheme
 
     def set_start_line(self, line):
-        self.version, self.code, self.phrase = line.rstrip().split(' ', 2)
+        parts = line.rstrip().split(' ', 2)
+        self.version, self.code = parts[:2]
+        self.phrase = parts[2] if len(parts) >= 3 else ""
+
         self.code = int(self.code)
         if self.version == 'HTTP/1.0':
             self.keep_alive = False
