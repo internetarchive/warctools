@@ -126,6 +126,10 @@ class WarcParser(ArchiveParser):
     def __init__(self):
         self.trailing_newlines = 0
 
+        #To avoid exhausing memory while reading large payloads, don't
+        #store large records.
+        self.content_length_limit = 5 * 1024 * 1024
+
     def parse(self,stream, offset):
         """Reads a warc record from the stream, returns a tuple (record, errors).
         Either records is null or errors is null. Any record-specific errors are
@@ -240,22 +244,35 @@ class WarcParser(ArchiveParser):
             ### since this was exhasting memory and crashing for large payloads.
             sha1_digest = None
             if 'response' == record.type and 'application/http; msgtype=response' == content_type:
+                parsed_http_header = False
                 digest = record.get_header(WarcRecord.PAYLOAD_DIGEST)
                 if digest is None:
                     sha1_digest = hashlib.sha1()
-                    parsed_http_header = False
-
+            else:
+                #This isn't a http response so pretend we already parsed the http header
+                parsed_http_header = True
 
             if content_length is not None:
                 if content_length > 0:
                     content=[]
                     length = 0
+
+                    should_skip_content = False
+                    if content_length > self.content_length_limit:
+                        should_skip_content = True
+
                     while length < content_length:
                         line = stream.readline()
                         if not line:
                                # print 'no more data'
                                 break
-                        content.append(line)
+
+                        if should_skip_content:
+                            if not parsed_http_header:
+                                content.append(line)
+                        else:
+                            content.append(line)
+
                         length+=len(line)
 
                         if sha1_digest:
@@ -264,7 +281,9 @@ class WarcParser(ArchiveParser):
                                     sha1_digest.update(line)
                                 else:
                                     sha1_digest.update(line[:-(length-content_length)])
-                            elif nl_rx.match(line):
+
+                        if not parsed_http_header:
+                            if nl_rx.match(line):
                                 parsed_http_header = True
 
                         #print length, content_length, line
