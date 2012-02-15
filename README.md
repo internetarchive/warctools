@@ -23,7 +23,6 @@ changesets [f412b98c5575](https://bitbucket.org/rajbot/warc-tools/changeset/f412
 changeset [25595bef06b0](https://bitbucket.org/rajbot/warc-tools/changeset/25595bef06b0)
 
 ----
-<code>
 
 dependencies
 	setuptools
@@ -75,9 +74,9 @@ hanzo warc tools:
 
     warcindex.py
         spits out an index like this:
-#WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length
-warccrap/mywarc.warc 1196018 request /images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd1255a8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=request 193
-warccrap/mywarc.warc 1196631 response http://www.hanzoarchives.com/images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd2614f8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=response 3279474
+    #WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length
+    warccrap/mywarc.warc 1196018 request /images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd1255a8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=request 193
+    warccrap/mywarc.warc 1196631 response http://www.hanzoarchives.com/images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd2614f8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=response 3279474
         not great, but a start
 
 notes:
@@ -101,5 +100,3 @@ things left to do (in no order):
 
 
 -- tef thomas.figg@hanzoarchives.com
-
-</code>
