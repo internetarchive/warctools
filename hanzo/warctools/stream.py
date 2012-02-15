@@ -203,7 +203,20 @@ class GzipRecordFile(object):
             #print 'read chunk at', self.fh.tell(), self.done
             chunk = self.fh.read(CHUNK_SIZE)
             out = self.z.decompress(chunk)
-            if out: self.buffer+=out
+
+            if out:
+                #rajbot: if the decompressed string ends with a \r, then
+                #read another byte in case a \n is next. We need to do
+                #this because the line_rx pattern allows \r to be a valid
+                #newline, which causes the following \n to become a blank
+                #line which might prematurely end parsing of warc headers.
+                if out.endswith('\r') and not self.z.unused_data:
+                    next_byte = self.fh.read(1)
+                    next_chars = self.z.decompress(next_byte)
+                    if next_chars is not None:
+                        out += next_chars
+
+                self.buffer+=out
 
             if self.z.unused_data:
                 #print 'unused', len(self.z.unused_data)
