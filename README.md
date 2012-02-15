@@ -1,9 +1,12 @@
+# CDX Fork of warc-tools
+
 This is a fork of Hanzo Archives' warc tools package. It was forked after
 [changeset 1897e2bc9d29](http://code.hanzoarchives.com/warc-tools/changeset/1897e2bc9d29)
 and has not yet been merged upstream.
 
 This fork contains the following changes to support creating CDX indexes
-of archives used by the Internet Archive's Wayback Machine.
+of archives used by the Internet Archive's Wayback Machine. The CDX indexing
+script is [here](https://github.com/rajbot/CDX-Writer).
 
 Changes:
 
@@ -20,6 +23,7 @@ changesets [f412b98c5575](https://bitbucket.org/rajbot/warc-tools/changeset/f412
 changeset [25595bef06b0](https://bitbucket.org/rajbot/warc-tools/changeset/25595bef06b0)
 
 ----
+<code>
 
 dependencies
 	setuptools
@@ -98,3 +102,4 @@ things left to do (in no order):
 
 -- tef thomas.figg@hanzoarchives.com
 
+</code>
