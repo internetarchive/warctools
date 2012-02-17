@@ -9,8 +9,8 @@ from .archive_detect import register_record_type
 
 # URL<sp>IP-address<sp>Archive-date<sp>Content-type<sp>
 #Result-code<sp>Checksum<sp>Location<sp> Offset<sp>Filename<sp>
-#Archive-length<nl> 
-# 
+#Archive-length<nl>
+#
 @ArchiveRecord.HEADERS(
     URL='URL',
     IP='IP-address',
@@ -25,13 +25,13 @@ from .archive_detect import register_record_type
 )
 class ArcRecord(ArchiveRecord):
     def __init__(self, headers=None, content=None, errors=None):
-        ArchiveRecord.__init__(self,headers,content,errors) 
+        ArchiveRecord.__init__(self,headers,content,errors)
 
     @property
     def type(self):
         return "response"
 
-    def _write_to(self, out, nl):  
+    def _write_to(self, out, nl):
         pass
 
     @classmethod
@@ -41,7 +41,7 @@ class ArcRecord(ArchiveRecord):
 
 class ArcRecordHeader(ArcRecord):
     def __init__(self, headers=None, content=None, errors=None, version=None, raw_headers=None):
-        ArcRecord.__init__(self,headers,content,errors) 
+        ArcRecord.__init__(self,headers,content,errors)
         self.version = version
         self.raw_headers = raw_headers
     @property
@@ -66,7 +66,7 @@ class ArcParser(ArchiveParser):
 
         # question? will we get arc fragments?
         # should we store both headers & detect records by header length?
-        # if we don't know 
+        # if we don't know
 
         self.headers = []
         self.trailing_newlines = 0
@@ -98,16 +98,16 @@ class ArcParser(ArchiveParser):
             # configure parser instance
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
-            
+
             # now we have read header field in record body
             # we can extract the headers from the current record,
             # and read the length field
 
             # which is in a different place with v1 and v2
-        
-            # read headers 
+
+            # read headers
             arc_headers = self.get_header_list(line.strip().split())
-            
+
             # extract content, ignoring header lines parsed already
             content_type, content_length, errors = self.get_content_headers(arc_headers)
 
@@ -131,7 +131,7 @@ class ArcParser(ArchiveParser):
             while length < content_length:
                 line = stream.readline()
                 if not line:
-                       # print 'no more data' 
+                       # print 'no more data'
                         break
                 content.append(line)
                 length+=len(line)
@@ -165,12 +165,12 @@ class ArcParser(ArchiveParser):
                 if value:
                     content_type = value
                 else:
-                    errors.append(('invalid header',name,value)) 
+                    errors.append(('invalid header',name,value))
             elif length_rx.match(name):
                 try:
                     content_length = int(value)
                 except ValueError:
-                    errors.append(('invalid header',name,value)) 
+                    errors.append(('invalid header',name,value))
 
         return content_type, content_length, errors
 
