@@ -71,6 +71,9 @@ class ArcParser(ArchiveParser):
         self.headers = []
         self.trailing_newlines = 0
 
+        #rajbot: alexa arc files don't always have content-type in header
+        self.short_headers = [ArcRecord.URL, ArcRecord.IP, ArcRecord.DATE, ArcRecord.CONTENT_LENGTH]
+
     def parse(self, stream, offset):
         record = None
         content_type = None
@@ -151,8 +154,14 @@ class ArcParser(ArchiveParser):
         return ()
 
     def get_header_list(self, values):
-        return zip(self.headers, values)
-
+        num_values = len(values)
+        if 4 == num_values:
+            #rajbot: alexa arc files don't always have content-type in header
+            return zip(self.short_headers, values)
+        elif 5 == num_values:
+            return zip(self.headers, values)
+        else:
+            raise StandardHeader('invalid number of header fields')
 
     @staticmethod
     def get_content_headers(headers):
