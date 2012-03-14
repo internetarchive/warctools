@@ -126,10 +126,6 @@ class WarcParser(ArchiveParser):
     def __init__(self):
         self.trailing_newlines = 0
 
-        #To avoid exhausing memory while reading large payloads, don't
-        #store large records.
-        self.content_length_limit = 5 * 1024 * 1024
-
     def parse(self,stream, offset):
         """Reads a warc record from the stream, returns a tuple (record, errors).
         Either records is null or errors is null. Any record-specific errors are
@@ -258,7 +254,7 @@ class WarcParser(ArchiveParser):
                     length = 0
 
                     should_skip_content = False
-                    if content_length > self.content_length_limit:
+                    if content_length > ArchiveParser.content_length_limit:
                         should_skip_content = True
 
                     while length < content_length:

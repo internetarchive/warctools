@@ -2,6 +2,8 @@
 
 import sys
 import re
+import base64
+import hashlib
 
 from .record import ArchiveRecord,ArchiveParser
 from .stream import open_record_stream
@@ -126,27 +128,74 @@ class ArcParser(ArchiveParser):
 
             record = ArcRecord(headers = headers, errors=errors)
 
+        ### rajbot:
+        ### We do this because we don't want to read large records into memory,
+        ### since this was exhasting memory and crashing for large payloads.
+        sha1_digest = None
+        if record.url.startswith('http'):
+            parsed_http_header = False
+            sha1_digest = hashlib.sha1()
+        else:
+            #This isn't a http response so pretend we already parsed the http header
+            parsed_http_header = True
+
         line = None
 
         if content_length:
             content=[]
             length = 0
+
+            should_skip_content = False
+            if content_length > ArchiveParser.content_length_limit:
+                should_skip_content = True
+
             while length < content_length:
                 line = stream.readline()
                 if not line:
                        # print 'no more data'
                         break
-                content.append(line)
+
+                if should_skip_content:
+                    if not parsed_http_header:
+                        content.append(line)
+                else:
+                    content.append(line)
+
                 length+=len(line)
+
+                if sha1_digest:
+                    if parsed_http_header:
+                        if length <= content_length:
+                            sha1_digest.update(line)
+                        else:
+                            sha1_digest.update(line[:-(length-content_length)])
+
+                if not parsed_http_header:
+                    if nl_rx.match(line):
+                        parsed_http_header = True
+
+            if sha1_digest:
+                sha1_str = 'sha1:'+base64.b32encode(sha1_digest.digest())
+                record.headers.append(('WARC-Payload-Digest', sha1_str))
+
             content="".join(content)
-            content, line = content[0:content_length], content[content_length+1:]
+
+            ### note the content_length+1 below, which is not in the WARC parser
+            ### the +1 might be a bug
+            #content, line = content[0:content_length], content[content_length+1:]
+            content = content[0:content_length]
+            if length > content_length:
+                #line is the last line we read
+                trailing_chars = line[-(length-content_length):] #note that we removed the +1 from above
+            else:
+                trailing_chars = ''
+
             record.content = (content_type, content)
 
-
-        if line:
-            record.error('trailing data at end of record', line)
-        if  line == '':
-            self.trailing_newlines = 1
+            if trailing_chars:
+                record.error('trailing data at end of record', line)
+            if  trailing_chars == '':
+                self.trailing_newlines = 1
 
         return (record, (), offset)
 

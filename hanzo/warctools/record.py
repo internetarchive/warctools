@@ -18,7 +18,10 @@ def add_headers(**kwargs):
 
 class ArchiveParser(object):
     """ methods parse, and trim """
-    pass 
+    #To avoid exhausing memory while reading large payloads, don't
+    #store large records.
+    content_length_limit = 5 * 1024 * 1024
+
 
 
 @add_headers(DATE='Date', CONTENT_TYPE='Type', CONTENT_LENGTH='Length', TYPE='Type',URL='Url')
@@ -41,7 +44,7 @@ class ArchiveRecord(object):
 
     def error(self, *args):
         self.errors.append(args)
-        
+
     @property
     def type(self):
         return self.get_header(self.TYPE)
@@ -61,7 +64,7 @@ class ArchiveRecord(object):
     def get_header(self, name):
         for k,v in self.headers:
             if name == k:
-                return v    
+                return v
 
     def set_header(self, name, value):
         self.headers = [(k,v) for (k,v) in self.headers if k != name]
@@ -80,7 +83,7 @@ class ArchiveRecord(object):
             ln = min(1024, len(content_body))
             print '\t', strip.sub(lambda x:'\\x%00X'%ord(x.group()),content_body[:ln])
             print '\t...'
-            print 
+            print
         else:
             print 'Content: none'
             print
@@ -99,27 +102,27 @@ class ArchiveRecord(object):
             out.close()
 
 
-    def _write_to(self, out, newline):  
+    def _write_to(self, out, newline):
         raise AssertionError, 'this is bad'
 
 
     ### class methods for parsing
     @classmethod
     def open_archive(cls , filename=None, file_handle=None, mode="rb+", gzip="auto"):
-        """Generically open an archive - magic autodetect""" 
+        """Generically open an archive - magic autodetect"""
         if cls is ArchiveRecord:
             cls = None # means guess
         return open_record_stream(cls, filename, file_handle, mode, gzip)
 
     @classmethod
     def make_parser(self):
-        """Reads a (w)arc record from the stream, returns a tuple (record, errors). 
-        Either records is null or errors is null. Any record-specific errors are 
+        """Reads a (w)arc record from the stream, returns a tuple (record, errors).
+        Either records is null or errors is null. Any record-specific errors are
         contained in the record - errors is only used when *nothing* could be parsed"""
         raise StandardError
 
 
-    
+
 
 
 
