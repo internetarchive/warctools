@@ -42,13 +42,13 @@ def main(argv):
     if len(args) < 1:
         # dump the first record on stdin
         with closing(WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)) as fh:
-            unpack_records(fh, output_dir, default_name)
+            unpack_records(fh, output_dir, options.default_name)
         
     else:
         # dump a record from the filename, with optional offset
         for filename in args:
             with closing(ArchiveRecord.open_archive(filename=filename, gzip="auto")) as fh:
-                unpack_records(fh, output_dir, default_name)
+                unpack_records(fh, output_dir, options.default_name)
 
 
     return 0
@@ -123,9 +123,9 @@ def output_file(output_dir, url, http_header, default_name='index'):
     fullname = os.path.join(directory, filename)
 
     while os.path.exists(fullname):
-        u = uuid.uuid4()[:8]
+        u = str(uuid.uuid4())[:8]
 
-        filename = name[:45-len(ext)] + u + ext
+        filename = name[:45-len(ext)] + '_R'+ u + ext
 
         fullname = os.path.join(directory, filename)
 
