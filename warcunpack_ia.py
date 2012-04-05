@@ -25,7 +25,7 @@ parser.add_option("-o", "--output", dest="output")
 parser.add_option("-l", "--log", dest="log_file")
 parser.add_option("-W", "--wayback_prefix", dest="wayback")
 
-parser.set_defaults(output=None, log_file=None, default_name='index', wayback="http://wayback.archive-it.org/")
+parser.set_defaults(output=None, log_file=None, default_name='crawlerdefault', wayback="http://wayback.archive-it.org/")
 
 
 def log_headers(log_file):
@@ -46,18 +46,17 @@ def main(argv):
     else:
         output_dir  = os.getcwd()
 
+    collisions = 0
 
 
     if len(args) < 1:
-        # dump the first record on stdin
         log_file = sys.stdout if not options.log_file else open(options.log_file, 'wb')
         log_headers(log_file)
         
         with closing(WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)) as fh:
-            unpack_records('<stdin>', fh, output_dir, options.default_name, log_file, options.wayback)
+            collisions += unpack_records('<stdin>', fh, output_dir, options.default_name, log_file, options.wayback)
         
     else:
-        # dump a record from the filename, with optional offset
         for filename in args:
             
             log_file = os.path.join(output_dir, os.path.basename(filename)+ '.index.txt') if not options.log_file else options.log_file
@@ -65,16 +64,19 @@ def main(argv):
             log_headers(log_file)
             try:
                 with closing(ArchiveRecord.open_archive(filename=filename, gzip="auto")) as fh:
-                    unpack_records(filename, fh, output_dir, options.default_name, log_file, options.wayback)
+                    collisions+=unpack_records(filename, fh, output_dir, options.default_name, log_file, options.wayback)
 
             except StandardError, e:
                 print >> sys.stderr, "exception in handling", filename, e
-
+    if collisions:
+        print >> sys.stderr, collisions, "filenames that collided"
+        
 
     return 0
 
 def unpack_records(name, fh, output_dir, default_name, output_log, wayback_prefix):
     collectionId = ''
+    collisions = 0
     for (offset, record, errors) in fh.read_records(limit=None):
         if record:
             try:
@@ -100,6 +102,8 @@ def unpack_records(name, fh, output_dir, default_name, output_log, wayback_prefi
 
                     if 200 <= code < 300: 
                         filename, collision = output_file(output_dir, record.url, mime_type, default_name)
+                        if collision:
+                            collisions+=1
 
                         wayback_uri = ''
                         if collectionId:
@@ -119,7 +123,7 @@ def unpack_records(name, fh, output_dir, default_name, output_log, wayback_prefi
             for e in errors:
                 print >> sys.stderr , e,
             print >>sys.stderr
-
+    return collisions
 
 def parse_warcinfo(record):
     info = {}
@@ -157,7 +161,7 @@ def parse_http_response(record):
     return header.code, mime_type, message
 
 
-def output_file(output_dir, url, mime_type, default_name='index'):
+def output_file(output_dir, url, mime_type, default_name):
     clean_url = "".join((c if c.isalpha() or c.isdigit() or c in '_-/.' else '_') for c in url.replace('://','/',1))
 
     parts = clean_url.split('/')
@@ -181,6 +185,8 @@ def output_file(output_dir, url, mime_type, default_name='index'):
             mime_ext = mimetypes.guess_extension(mime_type)
             if mime_ext:
                 ext = mime_ext
+    elif not ext:
+        ext = '.html' # no mime time, no extension
 
     directory =  os.path.normpath(os.path.join(*path))
     directory = directory[:200]
