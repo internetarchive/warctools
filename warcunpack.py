@@ -2,7 +2,7 @@
 """warcextract - dump warc record context to directory"""
 
 import os
-import sys
+import uuid
 
 import sys
 import os.path
@@ -20,12 +20,11 @@ mimetypes.add_type('text/javascript', 'js')
 
 parser = OptionParser(usage="%prog [options] warc offset")
 
-#parser.add_option("-l", "--limit", dest="limit")
+parser.add_option("-D", "--default-name", dest="default_name")
 parser.add_option("-o", "--output", dest="output")
 parser.add_option("-l", "--log", dest="logfile")
-parser.add_option("-L", "--log-level", dest="log_level")
 
-parser.set_defaults(output=None, log_file=None, log_level="info")
+parser.set_defaults(output=None, log_file=None, default_name='index')
 
 
 def main(argv):
@@ -43,18 +42,18 @@ def main(argv):
     if len(args) < 1:
         # dump the first record on stdin
         with closing(WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)) as fh:
-            unpack_records(fh, output_dir)
+            unpack_records(fh, output_dir, default_name)
         
     else:
         # dump a record from the filename, with optional offset
         for filename in args:
             with closing(ArchiveRecord.open_archive(filename=filename, gzip="auto")) as fh:
-                unpack_records(fh, output_dir)
+                unpack_records(fh, output_dir, default_name)
 
 
     return 0
 
-def unpack_records(fh, output_dir):
+def unpack_records(fh, output_dir, default_name):
     for (offset, record, errors) in fh.read_records(limit=None):
         if record:
             content_type, content = record.content
@@ -71,7 +70,7 @@ def unpack_records(fh, output_dir):
                 header = message.header
                 if 200 <= header.code < 300: 
 
-                    filename = output_file(output_dir, record.url, message.header)
+                    filename = output_file(output_dir, record.url, message.header, default_name)
 
                     print >>sys.stderr, 'writing', record.url,  filename
                     with open(filename, 'wb') as out:
@@ -119,10 +118,18 @@ def output_file(output_dir, url, http_header, default_name='index'):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    filename = name[:50-len(ext)] + ext
+    filename = name[:45-len(ext)] + ext
 
-    return os.path.join(directory, filename)
+    fullname = os.path.join(directory, filename)
 
+    while os.path.exists(fullname):
+        u = uuid.uuid4()[:8]
+
+        filename = name[:45-len(ext)] + u + ext
+
+        fullname = os.path.join(directory, filename)
+
+    return fullname
     
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
