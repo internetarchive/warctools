@@ -227,6 +227,29 @@ class GzipRecordFile(object):
                 self.done = True
                 continue
 
+    def read(self, num_bytes):
+        # add bytes to self.buff if the current buffer doesn't have enough
+        # data in it, and we have not exhaused the compressed stream
+        while (len(self.buffer) < num_bytes) and not self.done:
+            chunk = self.fh.read(CHUNK_SIZE)
+            d_bytes = self.z.decompress(chunk)
+            if d_bytes:
+                self.buffer += d_bytes
+
+            if self.z.unused_data:
+                #print 'unused', len(self.z.unused_data)
+                self.fh.seek(-len(self.z.unused_data),1)
+                self.done=True
+                break
+            if not chunk:
+                self.done = True
+                break
+
+        out = self.buffer[:num_bytes]
+        self.buffer = self.buffer[num_bytes:]
+
+        return out
+
     def close(self):
         if self.z:
             self.z.flush()

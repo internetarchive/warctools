@@ -150,10 +150,13 @@ class ArcParser(ArchiveParser):
                 should_skip_content = True
 
             while length < content_length:
-                line = stream.readline()
+                if not parsed_http_header:
+                    line = stream.readline()
+                else:
+                    line = stream.read(1024) #TODO: rename variable. may be more than just one line
                 if not line:
-                       # print 'no more data'
-                        break
+                    #print 'no more data'
+                    break
 
                 if should_skip_content:
                     if not parsed_http_header:
