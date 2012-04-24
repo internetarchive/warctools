@@ -141,7 +141,7 @@ class ArcParser(ArchiveParser):
 
         line = None
 
-        if content_length:
+        if content_length > 0: ###rajbot: some arc files have a negative content_length and no payload.
             content=[]
             length = 0
 
