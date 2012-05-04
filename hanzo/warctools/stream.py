@@ -147,8 +147,6 @@ class GzipRecordFile(object):
     def __init__(self, fh):
         self.fh = fh
         self.buffer = ""
-        # if we read a line ending in \r, we should skip a \n.
-        self.skip_newline = False
         self.z = zlib.decompressobj(16+zlib.MAX_WBITS)
         self.done = False
 
@@ -161,10 +159,6 @@ class GzipRecordFile(object):
             # print 'split:', split[0],split[1], len(split[2])
             if match: 
                 output = match.group('line')
-                # if we've read in a line ending with \r, we should skip any following \n
-
-                if output.endswith('\r'):
-                    self.skip_newline = True
 
                 self.buffer = ""+match.group('tail')
                 return output
@@ -190,18 +184,12 @@ class GzipRecordFile(object):
             # if we hit a \r on reading a chunk boundary, read a little more
             # in case there is a following \n 
             if out.endswith('\r') and not self.z.unused_data:
-                tail =  self.z.decompress(self.fh.read(8))
+                tail =  self.z.decompress(self.fh.read(CHUNK_SIZE))
                 if tail:
                     out+=tail
 
-            # if we read something in that beings with \n,
-            # and the last line found ended with \r, we should skip this
 
-            if out.startswith('\n') and self.skip_newline:
-                self.buffer += out[1:]
-                self.skip_newline = False
-
-            elif out:
+            if out:
                 self.buffer += out
 
             if self.z.unused_data:
