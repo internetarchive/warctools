@@ -184,9 +184,15 @@ class GzipRecordFile(object):
             # if we hit a \r on reading a chunk boundary, read a little more
             # in case there is a following \n 
             if out.endswith('\r') and not self.z.unused_data:
-                tail =  self.z.decompress(self.fh.read(CHUNK_SIZE))
-                if tail:
-                    out+=tail
+
+                while True:
+                    chunk = self.fh.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    tail =  self.z.decompress(chunk)
+                    if tail:
+                        out+=tail
+                        break
 
 
             if out:
