@@ -17,12 +17,17 @@ changesets [941b79f83d6c](https://bitbucket.org/rajbot/warc-tools/changeset/941b
 include the sha1 hash in cdx files without having to store the entire
 payload in memory. Changeset [0bedbca70d7c](https://bitbucket.org/rajbot/warc-tools/changeset/0bedbca70d7c)
 - Do not store payloads larger than 5MB due to memory issues:
-changesets [f412b98c5575](https://bitbucket.org/rajbot/warc-tools/changeset/f412b98c5575) and
-[d3767f736601](https://bitbucket.org/rajbot/warc-tools/changeset/d3767f736601)
+changesets [f412b98c5575](https://bitbucket.org/rajbot/warc-tools/changeset/f412b98c5575),
+[d3767f736601](https://bitbucket.org/rajbot/warc-tools/changeset/d3767f736601), and
+[00f9a2879469](https://bitbucket.org/rajbot/warc-tools/changeset/00f9a2879469)
+- Speed up parsing of large payloads:
+changeset [a84ad1ec7377](https://bitbucket.org/rajbot/warc-tools/changeset/a84ad1ec7377)
 - Bugfix for parsing warc headers with a CRLF at 1K compressed chunk boundary:
-changeset [25595bef06b0](https://bitbucket.org/rajbot/warc-tools/changeset/25595bef06b0)
-- Handle Alexa arc files that are sometimes missing the content-type field in the header:
-changeset [683b833935b9](https://bitbucket.org/rajbot/warc-tools/changeset/683b833935b9)
+changesets [25595bef06b0](https://bitbucket.org/rajbot/warc-tools/changeset/25595bef06b0) and
+[af549e5e3586](https://bitbucket.org/rajbot/warc-tools/changeset/af549e5e3586)
+- Handle Alexa arc files with missing content-type header or negative content length:
+changesets [683b833935b9](https://bitbucket.org/rajbot/warc-tools/changeset/683b833935b9) and
+[a070fd062ce1](https://bitbucket.org/rajbot/warc-tools/changeset/a070fd062ce1)
 
 ----
 
