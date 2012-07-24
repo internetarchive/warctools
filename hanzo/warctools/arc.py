@@ -211,7 +211,13 @@ class ArcParser(ArchiveParser):
             #rajbot: alexa arc files don't always have content-type in header
             return zip(self.short_headers, values)
         elif 5 == num_values:
+            #normal case
             return zip(self.headers, values)
+        elif 6 == num_values:
+            #rajbot: some old alexa arcs have "content-type; charset" in the header
+            v = values[0:4]+values[5:]
+            v[3] = v[3].rstrip(';')
+            return zip(self.headers, v)
         else:
             raise StandardHeader('invalid number of header fields')
 
