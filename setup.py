@@ -13,5 +13,6 @@ setup(name='hanzo-warc-tools',
       packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
       scripts=glob.glob('*warc*.py'),
       namespace_packages=["hanzo"],
-      test_suite="hanzo.httptools"
+      test_suite="hanzo.httptools.tests",
+      test_loader="unittest2:TestLoader"
      )
