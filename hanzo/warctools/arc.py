@@ -87,7 +87,6 @@ class ArcParser(ArchiveParser):
             self.trailing_newlines-=1
             line = stream.readline()
 
-
         if line.startswith('filedesc:'):
             raw_headers = []
             raw_headers.append(line)
@@ -123,7 +122,8 @@ class ArcParser(ArchiveParser):
         else:
             if not self.headers:
                 raise StandardHeader('missing filedesc')
-            headers = self.get_header_list(line.strip().split())
+            #raj: change the call to split below to only split on space (some arcs have a \x0c formfeed character in the url)
+            headers = self.get_header_list(line.strip().split(' '))
             content_type, content_length, errors = self.get_content_headers(headers)
 
             record = ArcRecord(headers = headers, errors=errors)
