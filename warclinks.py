@@ -83,6 +83,8 @@ try:
             html.make_links_absolute(base)
 
             for element, attribute, link, pos in html.iterlinks():
+                if isinstance(link, unicode):
+                    link = link.encode('utf-8', 'ignore')
                 yield link
 
         except StandardError:
