@@ -61,7 +61,7 @@ def extract_links_from_warcfh(fh):
 
                     if 200 <= code < 300 and mime_type.find('html') > -1: 
                         for link in extract_links_from_html(record.url, message.get_body()):
-                            yield unicode(link).encode('utf-8').translate(None, '\n\r\t')
+                            yield ("".join(c for c in link if c not in '\n\r\t'))
 
 
             except StandardError, e:
