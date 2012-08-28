@@ -40,11 +40,11 @@ def extract_links(fh):
                         html = LinkParser()
                         try:
                             html.feed(message.get_body())
+                            html.close()
                         except HTMLParseError,ex:
                             logging.warning("html parse error")
                             continue
                         finally:
-                            html.close()
 
                         for link in html.get_abs_links(record.url):
                             yield link
