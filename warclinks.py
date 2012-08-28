@@ -26,34 +26,6 @@ parser.add_option("-L", "--log-level", dest="log_level")
 
 parser.set_defaults(log_level="info")
 
-def extract_links(fh):
-    for (offset, record, errors) in fh.read_records(limit=None):
-        if record:
-            try:
-                content_type, content = record.content
-
-                if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
-
-                    code, mime_type, message = parse_http_response(record)
-
-                    if 200 <= code < 300 and mime_type.find('html') > -1: 
-                        html = LinkParser()
-                        try:
-                            html.feed(message.get_body())
-                            html.close()
-                        except HTMLParseError,ex:
-                            logging.warning("html parse error")
-                            continue
-                        finally:
-
-                        for link in html.get_abs_links(record.url):
-                            yield link
-
-            except StandardError, e:
-                logging.warning("error in handling record "+str(e))
-
-        elif errors:
-            logging.warning("warc error at %d: %s"%((offset if offset else 0), ", ".join(str(e) for e in errors)))
 
 
 def parse_http_response(record):
@@ -77,6 +49,58 @@ def parse_http_response(record):
     return header.code, mime_type, message
 
 
+def extract_links_from_warcfh(fh):
+    for (offset, record, errors) in fh.read_records(limit=None):
+        if record:
+            try:
+                content_type, content = record.content
+
+                if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
+
+                    code, mime_type, message = parse_http_response(record)
+
+                    if 200 <= code < 300 and mime_type.find('html') > -1: 
+                        for link in extract_links_from_html(record.url, message.get_body()):
+                            yield link
+
+
+            except StandardError, e:
+                logging.warning("error in handling record "+str(e))
+
+        elif errors:
+            logging.warning("warc error at %d: %s"%((offset if offset else 0), ", ".join(str(e) for e in errors)))
+
+
+
+try:
+    import lxml.html
+
+    def extract_links_from_html(base, body):
+        try:
+            html = lxml.html.fromstring(body)
+            html.make_links_absolute(base)
+
+            for element, attribute, link, pos in html.iterlinks():
+                yield link
+        except StandardError:
+            logging.warning("(lxml) html parse error")
+            import traceback; traceback.print_exc()
+            
+
+except ImportError:
+    logging.warning("using fallback parser")
+    def extract_links_from_html(base, body):
+        try:
+            html = LinkParser(base)
+            html.feed(body)
+            html.close()
+            for link in html.get_abs_links():
+                yield link
+        except HTMLParseError,ex:
+            logging.warning("html parse error")
+
+
+""" fallback link extractor """
 def attr_extractor(*names):
         def _extractor(attrs):
             return [value for key,value in attrs if key in names and value]
@@ -94,10 +118,10 @@ def meta_extractor(attrs):
 
 
 class LinkParser(HTMLParser):
-    def __init__(self):
-        self.links = []
+    def __init__(self, base):
         HTMLParser.__init__(self)
-        self.base = None
+        self.links = []
+        self.base = base
 
         self.tag_extractor = {
             "a": attr_extractor("href"),
@@ -136,12 +160,9 @@ class LinkParser(HTMLParser):
         if extractor:
             self.links.extend(extractor(attrs))
 
-
-    def get_abs_links(self, url):
-        if self.base:
-            url = self.base
+    def get_abs_links(self):
         full_urls = []
-        root = urlparse(url)
+        root = urlparse(self.base)
         root_dir = os.path.split(root.path)[0]
         for link in self.links:
             parsed = urlparse(link)
@@ -171,7 +192,6 @@ class LinkParser(HTMLParser):
         return full_urls
 
 
-
 def main(argv):
     (options, warcs) = parser.parse_args(args=argv[1:])
     logging.basicConfig(level=LEVELS[options.log_level])
@@ -185,7 +205,7 @@ def main(argv):
     for warc in warcs:
         try:
             with closing(ArchiveRecord.open_archive(filename=warc, gzip="auto")) as fh:
-                for link in extract_links(fh):
+                for link in extract_links_from_warcfh(fh):
                     print link
 
         except StandardError as e:
@@ -193,6 +213,8 @@ def main(argv):
             ret -=1
 
     return ret
+
+
 
 
 if __name__ == '__main__':
