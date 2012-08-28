@@ -61,14 +61,16 @@ def extract_links_from_warcfh(fh):
 
                     if 200 <= code < 300 and mime_type.find('html') > -1: 
                         for link in extract_links_from_html(record.url, message.get_body()):
-                            yield link
+                            yield link.translate(None, '\n\r\t')
 
 
             except StandardError, e:
                 logging.warning("error in handling record "+str(e))
+                import traceback; traceback.print_exc()
 
         elif errors:
             logging.warning("warc error at %d: %s"%((offset if offset else 0), ", ".join(str(e) for e in errors)))
+            import traceback; traceback.print_exc()
 
 
 
@@ -82,6 +84,7 @@ try:
 
             for element, attribute, link, pos in html.iterlinks():
                 yield link
+
         except StandardError:
             logging.warning("(lxml) html parse error")
             import traceback; traceback.print_exc()
