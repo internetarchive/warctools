@@ -4,6 +4,7 @@ import sys
 import re
 import base64
 import hashlib
+import zlib
 
 from .record import ArchiveRecord,ArchiveParser
 from .stream import open_record_stream
@@ -80,7 +81,12 @@ class ArcParser(ArchiveParser):
         record = None
         content_type = None
         content_length = None
-        line = stream.readline()
+        try:
+            line = stream.readline()
+        except zlib.error:
+            #some ARC files contain trailing padding zeros
+            #see DR_crawl22.20030622054102-c/DR_crawl22.20030622142039.arc.gz for an example
+            return (None,(), offset)
         while not line.rstrip():
             if not line:
                 return (None,(), offset)
