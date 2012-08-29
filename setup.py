@@ -4,8 +4,13 @@ import glob
 
 from setuptools import setup
 
+fh = open("version", "rb")
+version = fh.readline()
+fh.close()
+version.trim()
+
 setup(name='hanzo-warc-tools',
-      version='0.2',
+      version=version,
       license="MIT License",
       description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
       author='Thomas Figg',
