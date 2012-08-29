@@ -52,6 +52,14 @@ hanzo-warc-tools ($VERSION) Hanzo;
  -- Stephen Jones <stephen.jones@hanzoarchives.com> $(date +'%a, %d %h %Y %T %z')
 EOF
 
+cat <<EOF > debian/DEBIAN/postinst
+#!/bin/bash -e
+
+if which pycompile >/dev/null 2>&1; then
+  pycompile -p hanzo-warc-tools
+fi
+EOF
+
 pushd debian
 
 find usr/bin -type f -name '*.py' | (
@@ -67,6 +75,7 @@ find usr/share -type f -exec chmod 644 '{}' ';'
 find DEBIAN -type f -exec chmod 644 '{}' ';'
 find . -type d -exec chmod 755 '{}' ';'
 
+chmod 755 DEBIAN/postinst
 
 popd
 
