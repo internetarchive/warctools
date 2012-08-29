@@ -7,7 +7,7 @@ from setuptools import setup
 fh = open("version", "rb")
 version = fh.readline()
 fh.close()
-version.trim()
+version.strip()
 
 setup(name='hanzo-warc-tools',
       version=version,
