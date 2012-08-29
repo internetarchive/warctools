@@ -12,3 +12,6 @@ dist/*
 hanzo_warc_tools.egg-info/*
 *~
 *.orig
+debian/*
+*.deb
+test-reports/*
