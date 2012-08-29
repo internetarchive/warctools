@@ -8,15 +8,18 @@ fi
 
 mkdir debian
 
+VERSION="$(cat version)"
+
+if ! (echo "$VERSION" | egrep -q '^[0-9]+\.[0-9]+$'); then
+    echo "Invalid version number $VERSION" 1>&2
+    exit 1
+fi
+
 if [ "$(hg branch)" = 'default' ]; then
-    VERSION="$(hg log | awk '/^branch:/ { print $2 }' | head -n 1)"
-    CHANGESET="$(hg log -b "$VERSION" | awk '/^changeset:/ { gsub("^[0-9]+:", "", $2); print $2 }' | tail -n 1)"
-    REVISION="$(hg log -b default -r "${CHANGESET}:" | grep '^changeset:' | wc -l)"
+    REVISION="$(hg id -n)"
     VERSION="${VERSION}-tip"
-else
-    VERSION="$(hg branch)"
-    CHANGESET="$(hg log -b "$VERSION" | awk '/^changeset:/ { gsub("^[0-9]+:", "", $2); print $2 }' | tail -n 1)"
-    REVISION="$(hg log -b "$VERSION" | grep '^changeset:' | wc -l)"
+elif [ "$(hg branch)" = "$VERSION" ]; then
+    REVISION="$(hg id -n)"
 fi
 
 
@@ -39,17 +42,14 @@ python setup.py install -q --no-compile --root "$PWD/debian" --install-layout=de
 mkdir -p debian/usr/share/doc/hanzo-warc-tools
 echo "Copyright Hanzo Archives $(date +%Y)" > debian/usr/share/doc/hanzo-warc-tools/copyright
 cp README debian/usr/share/doc/hanzo-warc-tools/
-if [ "$(hg branch)" = 'default' ]; then
-    hg log -b default --style=changelog | gzip -9 > debian/usr/share/doc/hanzo-warc-tools/changelog.gz
-else
-    hg log -b "$VERSION" --style=changelog && hg log -b default -r ":${CHANGESET}" | gzip -9 > debian/usr/share/doc/hanzo-warc-tools/changelog
-fi
+hg log --style=changelog | gzip -9 > debian/usr/share/doc/hanzo-warc-tools/changelog.gz
 
 cat <<EOF | gzip -9 > debian/usr/share/doc/hanzo-warc-tools/changelog.Debian.gz
-hanzo-warc-tools (all) Hanzo
-  * Made debian style package  
+hanzo-warc-tools ($VERSION) Hanzo;
 
-  -- Stephen Jones <stephen.jones@hanzoarchives.com>
+ * Made debian style package  
+
+ -- Stephen Jones <stephen.jones@hanzoarchives.com> $(date +'%a, %d %h %Y %T %z')
 EOF
 
 pushd debian
@@ -60,12 +60,15 @@ find usr/bin -type f -name '*.py' | (
 	chmod 755 "${SCRIPT%.py}"
     done
 )
-find usr/lib -type f -exec chmod 644 '{}' ';'
-
 md5sum $(find . -path ./DEBIAN -prune -o -type f -print) > DEBIAN/md5sums
 
-popd
+find usr/lib -type f -exec chmod 644 '{}' ';'
+find usr/share -type f -exec chmod 644 '{}' ';'
+find DEBIAN -type f -exec chmod 644 '{}' ';'
+find . -type d -exec chmod 755 '{}' ';'
 
+
+popd
 
 fakeroot dpkg-deb --build debian .
 
