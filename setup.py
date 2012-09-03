@@ -17,7 +17,7 @@ setup(name='hanzo-warc-tools',
       author_email='thomas.figg@hanzoarchives.com',
       packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
       scripts=glob.glob('*warc*.py'),
-      namespace_packages=["hanzo"],
+#      namespace_packages=["hanzo"],
       test_suite="hanzo.httptools.tests",
       test_loader="unittest2:TestLoader"
      )
