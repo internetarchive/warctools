@@ -39,7 +39,6 @@ class ArcRecord(ArchiveRecord):
         """Constructs a parser for arc records."""
         return ArcParser()
 
-
 class ArcRecordHeader(ArcRecord):
     """Represents the headers in an arc record."""
     def __init__(self, headers=None, content=None, errors=None, version=None,
@@ -67,6 +66,8 @@ type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
+    SPLIT = re.compile(r'(\b\s|\s\b)').split
+
 
     def __init__(self):
         self.version = 0
@@ -117,7 +118,7 @@ class ArcParser(ArchiveParser):
             # which is in a different place with v1 and v2
         
             # read headers 
-            arc_headers = self.get_header_list(line.strip().split())
+            arc_headers = self.parse_header_list(line)
             
             # extract content, ignoring header lines parsed already
             content_type, content_length, errors = \
@@ -134,7 +135,7 @@ class ArcParser(ArchiveParser):
         else:
             if not self.headers:
                 raise StandardError('missing filedesc')
-            headers = self.get_header_list(line.strip().split())
+            headers = self.parse_header_list(line)
             content_type, content_length, errors = \
                 self.get_content_headers(headers)
 
@@ -167,8 +168,10 @@ class ArcParser(ArchiveParser):
     def trim(self, stream):
         return ()
 
-    def get_header_list(self, values):
-        return zip(self.headers, values)
+    def parse_header_list(self, line):
+        # some people use ' ' as the empty value. lovely.
+        return zip(self.headers,(s[::-1] for s in self.SPLIT(line[::-1], len(self.headers))[-1::-2]))
+
 
     @staticmethod
     def get_content_headers(headers):
