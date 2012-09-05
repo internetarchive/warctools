@@ -63,10 +63,10 @@ def rx(pat):
 nl_rx = rx('^\r\n|\r|\n$')
 length_rx = rx('^%s$' % ArcRecord.CONTENT_LENGTH) #pylint: disable-msg=E1101
 type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
+SPLIT = re.compile(r'\b\s|\s\b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
-    SPLIT = re.compile(r'(\b\s|\s\b)').split
 
 
     def __init__(self):
@@ -170,7 +170,14 @@ class ArcParser(ArchiveParser):
 
     def parse_header_list(self, line):
         # some people use ' ' as the empty value. lovely.
-        return zip(self.headers,(s[::-1] for s in self.SPLIT(line[::-1], len(self.headers))[-1::-2]))
+        values = SPLIT(line.rstrip('\r\n'))
+        if len(self.headers) != len(values):
+            if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
+                values = (s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers))))
+            else:
+                values = SPLIT(line, len(self.headers))
+                
+        return zip(self.headers, values)
 
 
     @staticmethod
