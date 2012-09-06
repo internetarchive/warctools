@@ -16,11 +16,13 @@ class MixedParser(ArchiveParser):
 
     def parse(self, stream, offset=None):
         line = stream.readline()
-        if line.startswith('WARC'):
-            record, errors, offset = self.warc.parse(stream, offset, line=line)
-            errors = list(errors) + list(self.warc.trim(stream))
-        else:
-            record, errors, offset = self.arc.parse(stream, offset, line=line)
+        while line:
+            if line.startswith('WARC'):
+                return self.warc.parse(stream, offset, line=line)
+            elif line not in ('\n','\r\n','\r'):
+                return self.arc.parse(stream, offset, line=line)
 
-        return record, errors,offset
+            line = stream.readline()
+        return None, (), offset
+
 

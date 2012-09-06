@@ -109,9 +109,10 @@ def main(argv):
         try:
             for record in fh:
                 if isinstance(record, WarcRecord):
-                    print >> sys.stderr, 'warcrecord found'
+                    print >> sys.stderr, '   WARC', record.url
                     warcs = [record]
                 else:
+                    print >> sys.stderr, 'ARC    ', record.url
                     warcs = arc.convert(record)
 
                 for warcrecord in warcs:
