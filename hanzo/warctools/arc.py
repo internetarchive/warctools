@@ -82,13 +82,15 @@ class ArcParser(ArchiveParser):
         self.headers = []
         self.trailing_newlines = 0
 
-    def parse(self, stream, offset):
+    def parse(self, stream, offset, line=None):
         """Parses a stream as an arc archive and returns an Arc record along
         with the offset in the stream of the end of the record."""
         record = None
         content_type = None
         content_length = None
-        line = stream.readline()
+        if line is None:
+            line = stream.readline()
+
         while not line.rstrip():
             if not line:
                 return (None, (), offset)
@@ -173,9 +175,13 @@ class ArcParser(ArchiveParser):
         values = SPLIT(line.rstrip('\r\n'))
         if len(self.headers) != len(values):
             if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
-                values = (s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers))))
+                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)))]
             else:
                 values = SPLIT(line, len(self.headers))
+
+
+        if len(self.headers) != len(values):
+            raise StandardError('missing headers')
                 
         return zip(self.headers, values)
 

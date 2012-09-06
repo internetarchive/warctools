@@ -140,7 +140,7 @@ class WarcParser(ArchiveParser):
     def __init__(self):
         self.trailing_newlines = 0
 
-    def parse(self, stream, offset):
+    def parse(self, stream, offset, line=None):
         """Reads a warc record from the stream, returns a tuple
         (record, errors).  Either records is null or errors is
         null. Any record-specific errors are contained in the record -
@@ -149,7 +149,8 @@ class WarcParser(ArchiveParser):
         errors = []
         version = None
         # find WARC/.*
-        line = stream.readline()
+        if line is None:
+            line = stream.readline()
         newlines = self.trailing_newlines
         if newlines > 0:
             while line:
