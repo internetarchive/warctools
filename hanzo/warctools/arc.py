@@ -218,6 +218,10 @@ class ArcParser(ArchiveParser):
             return zip(self.short_headers, values)
         elif 5 == num_values:
             #normal case
+            #rajbot: some old alexa arcs have ip-address and date transposed in the header
+            if re.match('^\d{14}$', values[1]) and re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
+                values[1], values[2] = values[2], values[1]
+
             return zip(self.headers, values)
         elif 6 == num_values:
             #rajbot: some old alexa arcs have "content-type; charset" in the header
