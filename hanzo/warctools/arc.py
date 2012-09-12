@@ -74,7 +74,7 @@ class ArcParser(ArchiveParser):
         self.headers = []
         self.trailing_newlines = 0
 
-        #rajbot: alexa arc files don't always have content-type in header
+        #raj: alexa arc files don't always have content-type in header
         self.short_headers = [ArcRecord.URL, ArcRecord.IP, ArcRecord.DATE, ArcRecord.CONTENT_LENGTH]
 
     def parse(self, stream, offset):
@@ -127,14 +127,18 @@ class ArcParser(ArchiveParser):
 
         else:
             if not self.headers:
-                raise StandardHeader('missing filedesc')
+                #raj: some arc files are missing the filedesc:// line
+                #raise StandardHeader('missing filedesc')
+                self.version = '1'
+                self.headers = ['URL', 'IP-address', 'Archive-date', 'Content-type', 'Archive-length']
+
             #raj: change the call to split below to only split on space (some arcs have a \x0c formfeed character in the url)
             headers = self.get_header_list(line.strip().split(' '))
             content_type, content_length, errors = self.get_content_headers(headers)
 
             record = ArcRecord(headers = headers, errors=errors)
 
-        ### rajbot:
+        ### raj:
         ### We do this because we don't want to read large records into memory,
         ### since this was exhasting memory and crashing for large payloads.
         sha1_digest = None
@@ -147,7 +151,7 @@ class ArcParser(ArchiveParser):
 
         line = None
 
-        if content_length > 0: ###rajbot: some arc files have a negative content_length and no payload.
+        if content_length > 0: ###raj: some arc files have a negative content_length and no payload.
             content=[]
             length = 0
 
@@ -214,17 +218,17 @@ class ArcParser(ArchiveParser):
     def get_header_list(self, values):
         num_values = len(values)
         if 4 == num_values:
-            #rajbot: alexa arc files don't always have content-type in header
+            #raj: alexa arc files don't always have content-type in header
             return zip(self.short_headers, values)
         elif 5 == num_values:
             #normal case
-            #rajbot: some old alexa arcs have ip-address and date transposed in the header
+            #raj: some old alexa arcs have ip-address and date transposed in the header
             if re.match('^\d{14}$', values[1]) and re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
                 values[1], values[2] = values[2], values[1]
 
             return zip(self.headers, values)
         elif 6 == num_values:
-            #rajbot: some old alexa arcs have "content-type; charset" in the header
+            #raj: some old alexa arcs have "content-type; charset" in the header
             v = values[0:4]+values[5:]
             v[3] = v[3].rstrip(';')
             return zip(self.headers, v)
@@ -253,3 +257,7 @@ class ArcParser(ArchiveParser):
 
 
 register_record_type(re.compile('^filedesc://'), ArcRecord)
+
+#raj: some arc files are missing the filedesc:// line
+url_record_regex = re.compile('^http://\S+ (?:\d{1,3}\.){3}\d{1,3} \d{14} \S+ \d+$')
+register_record_type(url_record_regex, ArcRecord)
