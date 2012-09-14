@@ -82,3 +82,7 @@ popd
 fakeroot dpkg-deb --build debian .
 
 lintian "hanzo-warc-tools_${VERSION}-${REVISION}_all.deb"
+
+if [ -n "$1" ] && [ -d "$1" ] && [ -w "$1" ]; then
+    mv "hanzo-warc-tools_${VERSION}-${REVISION}_all.deb" "$1"
+fi
