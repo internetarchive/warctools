@@ -39,7 +39,6 @@ class ArcRecord(ArchiveRecord):
         """Constructs a parser for arc records."""
         return ArcParser()
 
-
 class ArcRecordHeader(ArcRecord):
     """Represents the headers in an arc record."""
     def __init__(self, headers=None, content=None, errors=None, version=None,
@@ -64,9 +63,11 @@ def rx(pat):
 nl_rx = rx('^\r\n|\r|\n$')
 length_rx = rx('^%s$' % ArcRecord.CONTENT_LENGTH) #pylint: disable-msg=E1101
 type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
+SPLIT = re.compile(r'\b\s|\s\b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
+
 
     def __init__(self):
         self.version = 0
@@ -81,13 +82,15 @@ class ArcParser(ArchiveParser):
         self.headers = []
         self.trailing_newlines = 0
 
-    def parse(self, stream, offset):
+    def parse(self, stream, offset, line=None):
         """Parses a stream as an arc archive and returns an Arc record along
         with the offset in the stream of the end of the record."""
         record = None
         content_type = None
         content_length = None
-        line = stream.readline()
+        if line is None:
+            line = stream.readline()
+
         while not line.rstrip():
             if not line:
                 return (None, (), offset)
@@ -117,7 +120,7 @@ class ArcParser(ArchiveParser):
             # which is in a different place with v1 and v2
         
             # read headers 
-            arc_headers = self.get_header_list(line.strip().split())
+            arc_headers = self.parse_header_list(line)
             
             # extract content, ignoring header lines parsed already
             content_type, content_length, errors = \
@@ -134,7 +137,7 @@ class ArcParser(ArchiveParser):
         else:
             if not self.headers:
                 raise StandardError('missing filedesc')
-            headers = self.get_header_list(line.strip().split())
+            headers = self.parse_header_list(line)
             content_type, content_length, errors = \
                 self.get_content_headers(headers)
 
@@ -167,8 +170,21 @@ class ArcParser(ArchiveParser):
     def trim(self, stream):
         return ()
 
-    def get_header_list(self, values):
+    def parse_header_list(self, line):
+        # some people use ' ' as the empty value. lovely.
+        values = SPLIT(line.rstrip('\r\n'))
+        if len(self.headers) != len(values):
+            if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
+                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)))]
+            else:
+                values = SPLIT(line, len(self.headers))
+
+
+        if len(self.headers) != len(values):
+            raise StandardError('missing headers')
+                
         return zip(self.headers, values)
+
 
     @staticmethod
     def get_content_headers(headers):

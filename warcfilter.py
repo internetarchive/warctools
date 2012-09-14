@@ -72,6 +72,11 @@ def filter_archive(fh, options, pattern, out):
                         found = True
                         break
 
+                content_type, content = record.content
+                if not found:
+                    found = bool(pattern.search(content))
+                        
+
                 if found ^ invert:
                     record.write_to(out)
 
