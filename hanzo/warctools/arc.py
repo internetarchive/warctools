@@ -217,6 +217,13 @@ class ArcParser(ArchiveParser):
 
     def get_header_list(self, values):
         num_values = len(values)
+
+        #raj: some headers contain urls with unescaped spaces
+        if num_values > 5:
+            if re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[-4]) and re.match('^\d{14}$', values[-3]) and re.match('^\d+$', values[-1]):
+                values = ['%20'.join(values[0:-4]), values[-4], values[-3], values[-2], values[-1]]
+                num_values = len(values)
+
         if 4 == num_values:
             #raj: alexa arc files don't always have content-type in header
             return zip(self.short_headers, values)
