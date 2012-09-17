@@ -84,7 +84,7 @@ class ArcParser(ArchiveParser):
         try:
             line = stream.readline()
         except zlib.error:
-            #some ARC files contain trailing padding zeros
+            #raj: some ARC files contain trailing padding zeros
             #see DR_crawl22.20030622054102-c/DR_crawl22.20030622142039.arc.gz for an example
             return (None,(), offset)
         while not line.rstrip():
@@ -92,6 +92,16 @@ class ArcParser(ArchiveParser):
                 return (None,(), offset)
             self.trailing_newlines-=1
             line = stream.readline()
+
+        while line.endswith('\r'):
+            #raj: some ARC record headers contain a url with a '\r' character.
+            #The record header should end in \n, but we may also encounter
+            #malformed header lines that end with \r, so we need to see of we
+            #read the whole header, or just part of the url.
+            if not re.search('(?:\d{1,3}\.){3}\d{1,3} \d{14} \S+ \d+$', line):
+                line += stream.readline()
+            else:
+                break
 
         if line.startswith('filedesc:'):
             raw_headers = []
