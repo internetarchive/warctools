@@ -119,6 +119,11 @@ class ArcParser(ArchiveParser):
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
 
+            # raj: some v1 ARC files are incorrectly sending a v2 header names line
+            if arc_names_line == 'URL IP-address Archive-date Content-type Result-code Checksum Location Offset Filepath Archive-length\n':
+                if arc_version == '1 0 InternetArchive' and 5 == len(line.split(' ')):
+                    self.headers = ['URL', 'IP-address', 'Archive-date', 'Content-type', 'Archive-length']
+
             # now we have read header field in record body
             # we can extract the headers from the current record,
             # and read the length field
