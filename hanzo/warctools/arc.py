@@ -281,5 +281,5 @@ class ArcParser(ArchiveParser):
 register_record_type(re.compile('^filedesc://'), ArcRecord)
 
 #raj: some arc files are missing the filedesc:// line
-url_record_regex = re.compile('^http://\S+ (?:\d{1,3}\.){3}\d{1,3} \d{14} \S+ \d+$')
+url_record_regex = re.compile('^https?://\S+ (?:\d{1,3}\.){3}\d{1,3} \d{14} \S+ \d+$')
 register_record_type(url_record_regex, ArcRecord)
