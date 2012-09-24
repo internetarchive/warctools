@@ -34,6 +34,7 @@ class WarcRecord(ArchiveRecord):
     VERSION18 = "WARC/0.18"
     VERSION17 = "WARC/0.17"
     RESPONSE = "response"
+    RESOURCE = "resource"
     REQUEST = "request"
     METADATA = "metadata"
     CONVERSION = "conversion"

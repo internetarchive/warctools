@@ -172,16 +172,17 @@ class ArcParser(ArchiveParser):
 
     def parse_header_list(self, line):
         # some people use ' ' as the empty value. lovely.
-        values = SPLIT(line.rstrip('\r\n'))
+        line = line.rstrip('\r\n')
+        values = SPLIT(line)
         if len(self.headers) != len(values):
             if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
-                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)))]
+                # fencepost
+                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)-1))]
             else:
-                values = SPLIT(line, len(self.headers))
-
+                values = SPLIT(line, len(self.headers)-1)
 
         if len(self.headers) != len(values):
-            raise StandardError('missing headers')
+            raise StandardError('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
                 
         return zip(self.headers, values)
 
