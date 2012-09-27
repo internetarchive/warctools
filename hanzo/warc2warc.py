@@ -9,8 +9,8 @@ import os.path
 
 from optparse import OptionParser
 
-from hanzo.warctools import WarcRecord
-from hanzo.httptools import RequestMessage, ResponseMessage
+from .warctools import WarcRecord
+from .httptools import RequestMessage, ResponseMessage
 
 parser = OptionParser(usage="%prog [options] url (url ...)")
 
@@ -79,8 +79,11 @@ def main(argv):
 
     return 0
 
-if __name__ == '__main__':
+def run():
     sys.exit(main(sys.argv))
 
+
+if __name__ == '__main__':  
+    run()
 
 

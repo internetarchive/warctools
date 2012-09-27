@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from hanzo.warctools import ArchiveRecord, WarcRecord
+from .warctools import ArchiveRecord, WarcRecord
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 
@@ -49,9 +49,11 @@ def dump_archive(fh, name, offsets=True):
             print
             print 'note: no errors encountered in tail of file'
 
-
-if __name__ == '__main__':
+def run():
     sys.exit(main(sys.argv))
 
+
+if __name__ == '__main__':  
+    run()
 
 

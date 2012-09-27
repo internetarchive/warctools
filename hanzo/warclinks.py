@@ -10,8 +10,8 @@ from HTMLParser import HTMLParser, HTMLParseError
 from optparse import OptionParser
 from contextlib import closing
 
-from hanzo.warctools import ArchiveRecord, WarcRecord
-from hanzo.httptools import RequestMessage, ResponseMessage
+from .warctools import ArchiveRecord, WarcRecord
+from .httptools import RequestMessage, ResponseMessage
 
 
 LEVELS = {'debug': logging.DEBUG,
@@ -220,9 +220,11 @@ def main(argv):
     return ret
 
 
-
-
-if __name__ == '__main__':
+def run():
     sys.exit(main(sys.argv))
+
+
+if __name__ == '__main__':  
+    run()
 
 

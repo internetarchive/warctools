@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from hanzo.warctools import ArchiveRecord
+from .warctools import ArchiveRecord
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 
@@ -51,8 +51,12 @@ def main(argv):
 
     return 0
 
-if __name__ == '__main__':
+
+def run():
     sys.exit(main(sys.argv))
 
+
+if __name__ == '__main__':  
+    run()
 
 

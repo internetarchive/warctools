@@ -14,10 +14,10 @@ import socket
 
 from optparse import OptionParser
 
-from hanzo.warctools import ArcRecord,WarcRecord, MixedRecord
-from hanzo.warctools.warc import warc_datetime_str
+from .warctools import ArcRecord,WarcRecord, MixedRecord
+from .warctools.warc import warc_datetime_str
 
-from hanzo.httptools import ResponseMessage, RequestMessage
+from .httptools import ResponseMessage, RequestMessage
 
 parser = OptionParser(usage="%prog [options] arc (arc ...)")
 
@@ -196,10 +196,12 @@ def main(argv):
 
     return 0
 
+def run():
+    sys.exit(main(sys.argv))
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    run()
 
 
 

@@ -10,7 +10,7 @@ import os.path
 from optparse import OptionParser
 from contextlib import closing
 
-from hanzo.warctools import ArchiveRecord, WarcRecord
+from .warctools import ArchiveRecord, WarcRecord
 
 parser = OptionParser(usage="%prog [options] warc offset")
 
@@ -55,8 +55,11 @@ def dump_record(fh):
         break # only use one (I'm terrible)
 
 
-if __name__ == '__main__':
+def run():
     sys.exit(main(sys.argv))
 
+
+if __name__ == '__main__':  
+    run()
 
 

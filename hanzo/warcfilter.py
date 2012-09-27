@@ -8,7 +8,7 @@ import re
 
 from optparse import OptionParser
 
-from hanzo.warctools import ArchiveRecord
+from .warctools import ArchiveRecord
 
 parser = OptionParser(usage="%prog [options] pattern warc warc warc")
 
@@ -80,8 +80,12 @@ def filter_archive(fh, options, pattern, out):
                 if found ^ invert:
                     record.write_to(out)
 
-if __name__ == '__main__':
+
+def run():
     sys.exit(main(sys.argv))
 
+
+if __name__ == '__main__':  
+    run()
 
 
