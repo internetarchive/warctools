@@ -83,11 +83,14 @@ class ArcTransformer(object):
 
 
         warcmeta_id = self.make_warc_uuid(record.url+record.date+"-meta")
+        warcmeta_url = record.url
+        if warcmeta_url.startswith('filedesc://'):
+            warcmeta_url = warcmeta_url[11:]
         warcmeta_headers = [
             (WarcRecord.TYPE, WarcRecord.METADATA),
             (WarcRecord.CONCURRENT_TO, warcinfo_id),
             (WarcRecord.ID, warcmeta_id),
-            (WarcRecord.URL, record.url),
+            (WarcRecord.URL, warcmeta_url),
             (WarcRecord.DATE, warcmeta_date),
             (WarcRecord.WARCINFO_ID, warcinfo_id),
         ]
