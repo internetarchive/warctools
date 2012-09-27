@@ -500,7 +500,7 @@ class RequestHeader(HTTPHeader):
 
 class ResponseHeader(HTTPHeader):
 
-    def __init__(self, request, ignore_headers=()):
+    def __init__(self, request=None, ignore_headers=()):
         HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.request = request
         self.version = "HTTP/1.1"
@@ -537,7 +537,7 @@ class ResponseHeader(HTTPHeader):
             self.keep_alive = False
 
     def has_body(self):
-        if self.request.method in Methods.no_body:
+        if self.request and self.request.method in Methods.no_body:
             return False
         elif self.code in Codes.no_body:
             return False
