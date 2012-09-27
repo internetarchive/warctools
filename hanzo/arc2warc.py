@@ -120,6 +120,13 @@ class ArcTransformer(object):
         else:
             date = datetime.datetime.now()
 
+        ip = record.get_header(ArcRecord.IP)
+        if ip:
+            ip = ip.strip()
+            if ip != "0.0.0.0":
+                headers.append((WarcRecord.IP_ADDRESS, ip))
+            
+
         headers.append((WarcRecord.DATE, warc_datetime_str(date)))
 
         content_type, content = record.content
