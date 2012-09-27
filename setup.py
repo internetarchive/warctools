@@ -9,7 +9,7 @@ version = fh.readline()
 fh.close()
 version.strip()
 
-setup(name='hanzo-warc-tools',
+setup(name='hanzo-warctools',
     version=version,
     license="MIT License",
     description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
@@ -22,5 +22,12 @@ setup(name='hanzo-warc-tools',
     entry_points="""
         [console_scripts]
         warcdump=hanzo.warcdump:run
+        arc2warc=hanzo.arc2warc:run
+        warcextract=hanzo.warcextract:run
+        warcfilter=hanzo.warcfilter:run
+        warcindex=hanzo.warcindex:run
+        warclinks=hanzo.warclinks:run
+        warcvalid=hanzo.warcvalid:run
+        warc2warc=hanzo.warc2warc:run
     """,
     )
