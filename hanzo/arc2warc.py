@@ -26,8 +26,19 @@ parser.add_option("-o", "--output", dest="output",
 parser.add_option("-l", "--limit", dest="limit")
 parser.add_option("-Z", "--gzip", dest="gzip", action="store_true", help="compress")
 parser.add_option("-L", "--log-level", dest="log_level")
+parser.add_option("--description", dest="description")
+parser.add_option("--operator", dest="operator")
+parser.add_option("--publisher", dest="publisher")
+parser.add_option("--audience", dest="audience")
+parser.add_option("--resource", dest="resource", action="append")
+parser.add_option("--response", dest="response", action="append")
 
-parser.set_defaults(output_directory=None, limit=None, log_level="info", gzip=False)
+parser.set_defaults(
+    output_directory=None, limit=None, log_level="info", gzip=False,
+    description="", operator="", publisher="", audience="",
+    resource = [], response=[],
+    
+)
 
 def is_http_response(content):
     message = ResponseMessage(RequestMessage())
@@ -37,11 +48,13 @@ def is_http_response(content):
 
 
 class ArcTransformer(object):
-    def __init__(self, output_filename=None, warcinfo_fields='software: hanzo.arc2warc\r\n'):
+    def __init__(self, output_filename=None, warcinfo_fields='software: hanzo.arc2warc\r\n', resources=(), responses=()):
         self.warcinfo_id = None
         self.output_filename = output_filename
         self.version = "WARC/1.0"
         self.warcinfo_fields = warcinfo_fields
+        self.resources = resources
+        self.responses = responses
 
     @staticmethod
     def make_warc_uuid(text):
@@ -136,7 +149,12 @@ class ArcTransformer(object):
 
         url = record.url.lower()
 
-        if url.startswith('http'):
+
+        if any(url.startswith(p) for p in self.resources):
+            record_type = WarcRecord.RESOURCE
+        elif any(url.startswith(p) for p in self.responses):
+            record_type = WarcRecord.RESPONSE
+        elif url.startswith('http'):
             if is_http_response(content):
                 content_type="application/http;msgtype=response"
                 record_type = WarcRecord.RESPONSE
@@ -184,9 +202,16 @@ def main(argv):
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         
+    warcinfo = warcinfo_fields(
+        description = options.description,
+        operator = options.operator,
+        publisher = options.publisher,
+        audience = options.audience,
+
+    )
+    arc = ArcTransformer(options.output, warcinfo, options.resource, options.response)
     for name in input_files:
         fh = MixedRecord.open_archive(filename=name, gzip="auto")
-        arc = ArcTransformer(options.output, warcinfo_fields())
         try:
             for record in fh:
                 if isinstance(record, WarcRecord):
