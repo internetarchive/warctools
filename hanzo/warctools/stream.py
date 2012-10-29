@@ -13,7 +13,11 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
     first parameter is None, will try to guess"""
 
     if file_handle is None:
-        file_handle = open(filename, mode=mode)
+        if filename.startswith('s3://'):
+            from . import s3
+            file_handle = s3.open_url(filename)
+        else:
+            file_handle = open(filename, mode=mode)
     else:
         if not filename:
             filename = file_handle.name
