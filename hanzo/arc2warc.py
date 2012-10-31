@@ -14,7 +14,7 @@ import socket
 
 from optparse import OptionParser
 
-from .warctools import ArcRecord,WarcRecord, MixedRecord
+from .warctools import ArcRecord,WarcRecord, MixedRecord, expand_files
 from .warctools.warc import warc_datetime_str
 
 from .httptools import ResponseMessage, RequestMessage
@@ -210,7 +210,7 @@ def main(argv):
 
     )
     arc = ArcTransformer(options.output, warcinfo, options.resource, options.response)
-    for name in input_files:
+    for name in expand_files(input_files):
         fh = MixedRecord.open_archive(filename=name, gzip="auto")
         try:
             for record in fh:
