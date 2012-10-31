@@ -8,7 +8,7 @@ import re
 
 from optparse import OptionParser
 
-from .warctools import ArchiveRecord, expand_files
+from .warctools import WarcRecord, expand_files
 
 parser = OptionParser(usage="%prog [options] pattern warc warc warc")
 
@@ -37,11 +37,11 @@ def main(argv):
     out = sys.stdout
     pattern = re.compile(pattern)
     if not input_files:
-            fh = ArchiveRecord.open_archive(file_handle=sys.stdin, gzip=None)
+            fh = WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)
             filter_archive(fh, options, pattern, out)
     else:
         for name in expand_files(input_files):
-            fh = ArchiveRecord.open_archive(name, gzip="auto")
+            fh = WarcRecord.open_archive(name, gzip="auto")
             filter_archive(fh, options, pattern,out)
             fh.close()
 

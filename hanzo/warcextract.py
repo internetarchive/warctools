@@ -10,7 +10,7 @@ import os.path
 from optparse import OptionParser
 from contextlib import closing
 
-from .warctools import ArchiveRecord, WarcRecord
+from .warctools import WarcRecord
 
 parser = OptionParser(usage="%prog [options] warc offset")
 
@@ -37,7 +37,7 @@ def main(argv):
         else:
             offset = 0
 
-        with closing(ArchiveRecord.open_archive(filename=filename, gzip="auto")) as fh:
+        with closing(WarcRecord.open_archive(filename=filename, gzip="auto")) as fh:
             fh.seek(offset)
             dump_record(fh)
 

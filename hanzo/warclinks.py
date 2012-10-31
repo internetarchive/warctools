@@ -10,7 +10,7 @@ from HTMLParser import HTMLParser, HTMLParseError
 from optparse import OptionParser
 from contextlib import closing
 
-from .warctools import ArchiveRecord, WarcRecord, expand_files
+from .warctools import WarcRecord, expand_files
 from .httptools import RequestMessage, ResponseMessage
 
 
@@ -209,7 +209,7 @@ def main(argv):
 
     for warc in expand_files(warcs):
         try:
-            with closing(ArchiveRecord.open_archive(filename=warc, gzip="auto")) as fh:
+            with closing(WarcRecord.open_archive(filename=warc, gzip="auto")) as fh:
                 for link in extract_links_from_warcfh(fh):
                     print link
 

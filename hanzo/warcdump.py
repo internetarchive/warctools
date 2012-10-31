@@ -9,7 +9,7 @@ import os.path
 
 from optparse import OptionParser
 
-from .warctools import ArchiveRecord, WarcRecord, expand_files
+from .warctools import WarcRecord, expand_files
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
 
@@ -28,7 +28,7 @@ def main(argv):
         
     else:
         for name in expand_files(input_files):
-            fh = ArchiveRecord.open_archive(name, gzip="auto")
+            fh = WarcRecord.open_archive(name, gzip="auto")
             dump_archive(fh,name)
 
             fh.close()
