@@ -178,7 +178,8 @@ class ArcParser(ArchiveParser):
                 if not parsed_http_header:
                     line = stream.readline()
                 else:
-                    line = stream.read(1024) #TODO: rename variable. may be more than just one line
+                    bytes_to_read = min(content_length-length, 1024)
+                    line = stream.read(bytes_to_read) #TODO: rename variable. may be more than just one line
                 if not line:
                     #print 'no more data'
                     break
@@ -255,7 +256,7 @@ class ArcParser(ArchiveParser):
             v[3] = v[3].rstrip(';')
             return zip(self.headers, v)
         else:
-            raise StandardHeader('invalid number of header fields')
+            raise Exception('invalid number of header fields')
 
     @staticmethod
     def get_content_headers(headers):

@@ -262,7 +262,8 @@ class WarcParser(ArchiveParser):
                             line = stream.readline()
                             #print 'header:', line
                         else:
-                            line = stream.read(1024) #TODO: rename variable. may be more than just one line
+                            bytes_to_read = min(content_length-length, 1024)
+                            line = stream.read(bytes_to_read) #TODO: rename variable. may be more than just one line
                             #line = stream.readline()
                             #print 'line:', repr(line)
                         if not line:
