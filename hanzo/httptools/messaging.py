@@ -341,8 +341,8 @@ class LengthReader(object):
 
 
 class HTTPHeader(object):
-    STRIP_HEADERS = ('Content-Length', 'Transfer-Encoding', 'Content-Encoding',
-                     'TE', 'Expect', 'Trailer')
+    STRIP_HEADERS = [n.lower() for n in ('Content-Length', 'Transfer-Encoding', 'Content-Encoding',
+                     'TE', 'Expect', 'Trailer')]
 
     def __init__(self, ignore_headers):
         self.headers = []
@@ -370,10 +370,10 @@ class HTTPHeader(object):
 
     def write_headers(self, buf, strip_headers=()):
         for k, v in self.headers:
-            if k not in strip_headers:
+            if k.lower() not in strip_headers:
                 buf.extend('%s: %s\r\n' % (k, v))
         for k, v in self.trailers:
-            if k not in strip_headers:
+            if k.lower() not in strip_headers:
                 buf.extend('%s: %s\r\n' % (k, v))
 
     def add_trailer_line(self, line):
