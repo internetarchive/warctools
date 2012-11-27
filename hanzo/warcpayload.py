@@ -22,13 +22,17 @@ def main(argv):
     out = sys.stdout
 
     filename, offset = args[0].rsplit(':',1)
-    offset = int(offset)
-    payload = extract_payload(filename, offset)
+    if ',' in offset:
+        offset, length = [int(n) for n in offset.split(',',1)]
+    else:
+        offset = int(offset)
+        length = None # unknown
+
+    payload = extract_payload(filename, offset, length)
     out.write(payload)
 
-def extract_payload(filename, offset):
-    with closing(WarcRecord.open_archive(filename=filename, gzip="auto")) as fh:
-        fh.seek(offset)
+def extract_payload(filename, offset=None, length=None):
+    with closing(WarcRecord.open_archive(filename=filename, gzip="auto", offset=offset, length=length)) as fh:
         content = ""
         for (offset, record, errors) in fh.read_records(limit=1, offsets=False):
             if record:

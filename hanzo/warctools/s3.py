@@ -9,13 +9,13 @@ try:
     from boto.s3.connection import S3Connection, Location
     from boto.s3.key import Key
 except ImportError:
-    def open_url(url):
+    def open_url(url, offset=None, length=None):
         raise ImportError('boto')
 
     def list_files(prefix):
         raise ImportError('boto')
 else:
-    def open_url(url):
+    def open_url(url, offset=None, length=None):
         p = urlparse(url)
         bucket_name = p.netloc
         key = p.path[1:]
@@ -24,7 +24,13 @@ else:
         k = Key(b)
         k.key = key
         s = StringIO()
-        k.get_contents_to_file(s)
+        if offset is not None and length is not None:
+            headers={'Range' : 'bytes=%d-%d'%(offset, offset+length)}
+        elif offset is not None:
+            headers={'Range' : 'bytes=%d-'%(offset)}
+        else:
+            headers={}
+        k.get_contents_to_file(s, headers=headers)
         s.seek(0)
         return s
 

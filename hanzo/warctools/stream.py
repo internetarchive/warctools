@@ -7,7 +7,7 @@ import re
 from hanzo.warctools.archive_detect import is_gzip_file, guess_record_type
 
 def open_record_stream(record_class=None, filename=None, file_handle=None,
-                       mode="rb+", gzip="auto"):
+                       mode="rb+", gzip="auto", offset=None, length=None):
     """Can take a filename or a file_handle. Normally called
     indirectly from A record class i.e WarcRecord.open_archive. If the
     first parameter is None, will try to guess"""
@@ -15,9 +15,12 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
     if file_handle is None:
         if filename.startswith('s3://'):
             from . import s3
-            file_handle = s3.open_url(filename)
+            file_handle = s3.open_url(filename, offset=offset, length=length)
         else:
             file_handle = open(filename, mode=mode)
+            if offset is not None:
+                file_handle.seek(offset)
+                
     else:
         if not filename:
             filename = file_handle.name
