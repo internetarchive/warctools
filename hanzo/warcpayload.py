@@ -5,6 +5,7 @@ import sys
 
 import sys
 import os.path
+from cStringIO import StringIO
 
 from optparse import OptionParser
 from contextlib import closing
@@ -28,23 +29,30 @@ def main(argv):
         offset = int(offset)
         length = None # unknown
 
-    payload = extract_payload(filename, offset, length)
+    payload = extract_payload_from_file(filename, offset, length)
     out.write(payload)
 
-def extract_payload(filename, offset=None, length=None):
-    with closing(WarcRecord.open_archive(filename=filename, gzip="auto", offset=offset, length=length)) as fh:
-        content = ""
-        for (offset, record, errors) in fh.read_records(limit=1, offsets=False):
-            if record:
-                content_type, content = record.content
-                if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
-                    content = parse_http_response(record)
-            elif errors:
-                print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
-                for e in errors:
-                    print '\t', e
+def extract_payload_from_str(contents, gzip="record"):
+    with closing(StringIO(contents)) as stream, closing(WarcRecord.open_archive(file_handle=stream, gzip=gzip)) as fh:
+        return extract_payload_from_stream(fh)
 
-            return content
+def extract_payload_from_file(filename, offset=None, length=None):
+    with closing(WarcRecord.open_archive(filename=filename, gzip="auto", offset=offset, length=length)) as fh:
+        return extract_payload_from_stream(fh)
+
+def extract_payload_from_stream(fh):
+    content = ""
+    for (offset, record, errors) in fh.read_records(limit=1, offsets=False):
+        if record:
+            content_type, content = record.content
+            if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
+                content = parse_http_response(record)
+        elif errors:
+            print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
+            for e in errors:
+                print '\t', e
+
+        return content
 
 def parse_http_response(record):
     message = ResponseMessage(RequestMessage())
