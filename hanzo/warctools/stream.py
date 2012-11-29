@@ -21,10 +21,6 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
             if offset is not None:
                 file_handle.seek(offset)
                 
-    else:
-        if not filename:
-            filename = file_handle.name
-
     if record_class == None:
         record_class = guess_record_type(file_handle)
 
@@ -34,7 +30,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
     record_parser = record_class.make_parser()
 
     if gzip == 'auto':
-        if is_gzip_file(file_handle):
+        if (filename and filename.endswith('.gz')) or is_gzip_file(file_handle):
             gzip = 'record'
             #debug('autodetect: record gzip')
         else:
