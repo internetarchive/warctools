@@ -85,14 +85,11 @@ class WarcRecord(ArchiveRecord):
         out.write(str(content_length))
         out.write(nl)
 
-        block_hash = hashlib.sha256()
-        block_hash.update(content_buffer)
-
-        digest = "sha256:%s" % block_hash.hexdigest()
+        block_digest = self.block_digest(content_buffer)
 
         out.write(self.BLOCK_DIGEST)
         out.write(": ")
-        out.write(digest)
+        out.write(block_digest)
         out.write(nl)
 
         # end of header blank nl
@@ -113,6 +110,12 @@ class WarcRecord(ArchiveRecord):
     def make_parser(self):
         return WarcParser()
 
+    def block_digest(self, content_buffer):
+        block_hash = hashlib.sha256()
+        block_hash.update(content_buffer)
+
+        digest = "sha256:%s" % block_hash.hexdigest()
+        return digest
 
 def rx(pat):
     """Helper to compile regexps with IGNORECASE option set."""
