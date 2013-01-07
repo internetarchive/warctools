@@ -3,7 +3,7 @@ from .warc import WarcRecord
 from .arc import ArcRecord
 from .mixed import MixedRecord
 from .s3 import list_files
-from . import record, warc, arc
+from . import record, warc, arc, s3
 
 def expand_files(files):
     for file in files:
