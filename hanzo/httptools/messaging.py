@@ -28,9 +28,9 @@ class HTTPMessage(object):
 
     CONTENT_TYPE = "application/http"
 
-    def __init__(self, header):
-        self.buffer = bytearray()
-        self.offset = 0
+    def __init__(self, header, buf=None, offset=0):
+        self.buffer = buf if buf is not None else bytearray()
+        self.offset = offset
         self.header = header
         self.body_chunks = []
         self.mode = 'start'
@@ -582,3 +582,83 @@ class ResponseMessage(HTTPMessage):
             self.body_reader = None
             text = HTTPMessage.feed(self, text)
         return text
+
+    def as_http09(self):
+        return HTTP09Response(self)
+
+class HTTP09ResponseHeader(HTTPHeader):
+    def __init__(self, request=None, ignore_headers=()):
+        HTTPHeader.__init__(self, ignore_headers=ignore_headers)
+        self.request = request
+        self.version = "HTTP/0.9"
+        self.code = 200
+        self.phrase = ""
+
+    @property
+    def method(self):
+        return self.request.method
+
+    @property
+    def url(self):
+        return self.request.url
+
+    @property
+    def host(self):
+        return self.request.host
+
+    @property
+    def port(self):
+        return self.request.port
+
+    @property
+    def scheme(self):
+        return self.request.scheme
+
+    def has_body(self):
+        return True
+
+class HTTP09Response(HTTPMessage):
+    CONTENT_TYPE = "%s;msgtype=response;version=0.9" % HTTPMessage.CONTENT_TYPE
+    def __init__(self, response):
+        header= HTTP09ResponseHeader(response.header.request)
+        HTTPMessage.__init__(self, header, buf=response.buffer, offset=response.offset)
+        self.mode = 'body'
+
+    @property
+    def code(self):
+        return self.header.code
+
+    def feed_predict(self):
+        """returns size, terminator request for input. size is 0 means end. """
+        return -1, None
+
+    def feed(self, text):
+        """Push more text from the input stream into the parser."""
+        self.buffer.extend(text)
+        return ''
+
+    def close(self):
+        """Mark the end of the input stream and finish parsing."""
+        self.mode = 'end'
+
+    def get_message(self):
+        """Returns the contents of the input buffer."""
+        return str(self.buffer)
+
+    def get_decoded_message(self):
+        """Return the input stream reconstructed from the parsed
+        data."""
+        return str(self.buffer)
+
+    def write_decoded_message(self, buf):
+        """Writes the parsed data to the buffer passed."""
+        buf.extend(self.buffer)
+
+    def get_body(self):
+        """Returns the body of the HTTP message."""
+        return str(self.buffer)
+
+    def write_body(self, buf):
+        buf.extend(self.buffer)
+
+
