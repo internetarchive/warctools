@@ -23,6 +23,9 @@ from hanzo.httptools.semantics import Codes, Methods
 NEWLINES = ('\r\n', '\n')
 
 
+class BrokenChunks(Exception):
+    pass
+
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
 
@@ -115,8 +118,12 @@ class HTTPMessage(object):
         if text and self.mode == 'body':
             if self.body_reader is not None:
                 #print >> sys.stderr, 'feeding', text[:50]
-                text = self.body_reader.feed(self, text)
-            else:
+                try:
+                    text = self.body_reader.feed(self, text)
+                except BrokenChunks:
+                    self.body_reader = None
+                    self.body_chunks = [(self.offset, 0)]
+            if self.body_reader is None:
                 ((offset, length),) = self.body_chunks
                 self.buffer.extend(text)
                 self.offset = len(self.buffer)
@@ -252,6 +259,7 @@ class ChunkReader(object):
 
     def __init__(self):
         self.mode = "start"
+        self.start = True
         self.remaining = 0
 
     def feed_predict(self):
@@ -269,18 +277,30 @@ class ChunkReader(object):
 
     def feed_start(self, parser, text):
         """Feed text into the ChunkReader when the mode is 'start'."""
+        pos = len(parser.buffer)
         line, text = parser.feed_line(text)
         offset = len(parser.buffer)
 
         if line is not None:
-            chunk = int(line.split(';', 1)[0], 16)
+            try:
+                chunk = int(line.split(';', 1)[0], 16)
+            except ValueError:
+                # ugh, this means the chunk is probably not a chunk
+                if self.start:
+                    # undo, stip text from buffer
+                    del parser.buffer[pos:]
+                    parser.offset = len(parser.buffer)
+                    raise BrokenChunks()
+                else:
+                    raise
+
             parser.body_chunks.append((offset, chunk))
             self.remaining = chunk
             if chunk == 0:
                 self.mode = 'trailer'
             else:
                 self.mode = 'chunk'
-
+        self.start = False
         return text
 
     def feed_chunk(self, parser, text):
