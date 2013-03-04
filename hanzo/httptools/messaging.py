@@ -482,7 +482,25 @@ class RequestHeader(HTTPHeader):
         self.scheme = 'http'
         self.port = 80
         self.host = ''
+    
+    @property
+    def url(self):
+        if (self.scheme == 'http' and self.port == 80)\
+        or (self.scheme == 'https' and self.port == 80):
+            return "%s://%s%s"%(self.scheme, self.host, self.target_uri)
+        else:
+            return "%s://%s:$d%s"%(self.scheme, self.host, self.port,  self.target_uri)
 
+
+    def add_header(self, name, value):
+
+        if name.lower() == 'host':
+            if ':' in value:
+                self.host, self.port = value.split(':',1)
+            else:
+                self.host = value
+
+        return HTTPHeader.add_header(self, name, value)
     def set_start_line(self, line):
         self.method, self.target_uri, self.version = \
             line.rstrip().split(' ', 2)
