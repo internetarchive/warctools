@@ -489,7 +489,7 @@ class RequestHeader(HTTPHeader):
         or (self.scheme == 'https' and self.port == 80):
             return "%s://%s%s"%(self.scheme, self.host, self.target_uri)
         else:
-            return "%s://%s:$d%s"%(self.scheme, self.host, self.port,  self.target_uri)
+            return "%s://%s:%d%s"%(self.scheme, self.host, self.port,  self.target_uri)
 
 
     def add_header(self, name, value):
