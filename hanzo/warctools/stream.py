@@ -84,6 +84,10 @@ class RecordStream(object):
         """overridden by sub-classes to read individual records"""
         offset = self.fh.tell() if offsets else None
         record, errors, offset = self.record_parser.parse(self.fh, offset)
+        if record:
+            #TODO: use compressed_record_size to store size of UNcompressed record for now, rename later
+            record.compressed_record_size = self.fh.tell() - offset
+
         return offset, record, errors
 
     def write(self, record):

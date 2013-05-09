@@ -91,6 +91,8 @@ class ArcParser(ArchiveParser):
             if not line:
                 return (None,(), offset)
             self.trailing_newlines-=1
+            if offset:
+                offset += len(line) #rajbot
             line = stream.readline()
 
         while line.endswith('\r'):
