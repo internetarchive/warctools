@@ -20,7 +20,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
             file_handle = open(filename, mode=mode)
             if offset is not None:
                 file_handle.seek(offset)
-                
+
     if record_class == None:
         record_class = guess_record_type(file_handle)
 
@@ -44,7 +44,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
         return GzipFileStream(file_handle, record_parser)
     else:
         return RecordStream(file_handle, record_parser)
-        
+
 
 class RecordStream(object):
     """A readable/writable stream of Archive Records. Can be iterated over
@@ -61,7 +61,7 @@ class RecordStream(object):
 
     def read_records(self, limit=1, offsets=True):
         """Yield a tuple of (offset, record, errors) where
-        Offset is either a number or None. 
+        Offset is either a number or None.
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
 
@@ -70,7 +70,7 @@ class RecordStream(object):
             offset, record, errors = self._read_record(offsets)
             nrecords += 1
             yield (offset, record, errors)
-            if not record: 
+            if not record:
                 break
 
     def __iter__(self):
@@ -83,7 +83,7 @@ class RecordStream(object):
                 raise StandardError("Errors while decoding %s" % error_str)
             else:
                 break
-            
+
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
         offset = self.fh.tell() if offsets else None
@@ -113,11 +113,11 @@ class GzipRecordStream(RecordStream):
             record, r_errors, _offset = \
                 self.record_parser.parse(self.gz, offset=None)
             if record:
-                record.error('multiple warc records in gzip record file') 
+                record.error('multiple warc records in gzip record file')
                 return None, record, errors
             self.gz.close()
             errors.extend(r_errors)
-    
+
 
         offset = self.fh.tell() if offsets else None
         self.gz = GzipRecordFile(self.fh)
@@ -125,7 +125,7 @@ class GzipRecordStream(RecordStream):
             self.record_parser.parse(self.gz, offset=None)
         errors.extend(r_errors)
         return offset, record, errors
-                
+
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
@@ -136,12 +136,12 @@ class GzipFileStream(RecordStream):
         # no real offsets in a gzipped file (no seperate records)
         return RecordStream._read_record(self, False)
 
-### record-gzip handler, based on zlib 
+### record-gzip handler, based on zlib
 ### implements readline() access over a a single
 ### gzip-record. must be re-created to read another record
-    
 
-CHUNK_SIZE = 1024 # the size to read in, make this bigger things go faster.
+
+CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
 line_rx = re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
                      re.DOTALL)
 
@@ -160,59 +160,72 @@ class GzipRecordFile(object):
             match = line_rx.match(self.buffer)
             #print match
             # print 'split:', split[0],split[1], len(split[2])
-            if match: 
+            if match:
                 output = match.group('line')
 
                 self.buffer = ""+match.group('tail')
                 return output
-            
+
             elif self.done:
                 output = self.buffer
                 self.buffer = ""
 
                 return output
 
+    def _read_chunk(self):
+        chunk = self.fh.read(CHUNK_SIZE)
+        out = self.z.decompress(chunk)
+
+        # if we hit a \r on reading a chunk boundary, read a little more
+        # in case there is a following \n
+        while out.endswith('\r') and not self.z.unused_data:
+            chunk = self.fh.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            tail = self.z.decompress(chunk)
+            if tail:
+                out += tail
+                break
+
+        if self.z.unused_data:
+            self.fh.seek(-len(self.z.unused_data), 1)
+            self.done = True
+
+        if not chunk:
+            self.done = True
+
+        return out
+
     def readline(self):
         while True:
             output = self._getline()
             if output:
-                    return output
+                return output
 
             if self.done:
                 return ""
-            
-            #print 'read chunk at', self.fh.tell(), self.done
-            chunk = self.fh.read(CHUNK_SIZE)
-            out = self.z.decompress(chunk)
-            # if we hit a \r on reading a chunk boundary, read a little more
-            # in case there is a following \n 
-            while out.endswith('\r') and not self.z.unused_data:
-                    chunk = self.fh.read(CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    tail =  self.z.decompress(chunk)
-                    if tail:
-                        out+=tail
-                        break
 
+            chunk = self._read_chunk()
+            if chunk:
+                self.buffer += chunk
 
-            if out:
-                self.buffer += out
-
-            if self.z.unused_data:
-                #print 'unused', len(self.z.unused_data)
-                self.fh.seek(-len(self. z.unused_data), 1)
-                self.done = True
-                continue
+    def read(self, count):
+        """Reads `count` bytes from the stream. The output will be truncated if
+        there are less than `count` bytes remaining in the stream."""
+        length = len(self.buffer)
+        chunks = []
+        while not self.done and length < count:
+            chunk = self._read_chunk()
             if not chunk:
-                self.done = True
-                continue
+                break
+            length += len(chunk)
+            chunks.append(chunk)
+        self.buffer += "".join(chunks)
+
+        output = self.buffer[:count]
+        self.buffer = self.buffer[count:]
+        return output
 
     def close(self):
         if self.z:
             self.z.flush()
-            
-                
-    
-            
-                

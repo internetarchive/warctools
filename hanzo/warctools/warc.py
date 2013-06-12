@@ -263,29 +263,13 @@ class WarcParser(ArchiveParser):
             # read content
             if content_length is not None:
                 if content_length > 0:
-                    content = []
-                    length = 0
-                    while length < content_length:
-                        line = stream.readline()
-                        if not line:
-                            # print 'no more data'
-                            break
-                        content.append(line)
-                        length += len(line)
-                        #print length, content_length, line
-                    #else:
-                        # print 'last line of content', repr(line)
-                    content = "".join(content)
-                    content, line = \
-                        content[0:content_length], content[content_length:]
+                    content = stream.read(content_length)
                     if len(content) != content_length:
                         record.error('content length mismatch (is, claims)',
                                      len(content), content_length)
                     record.content = (content_type, content)
-                    if nl_rx.match(line):
-                        self.trailing_newlines = 1
-                    else:
-                        self.trailing_newlines = 2
+
+                    self.trailing_newlines = 2
             else:
                 record.error('missing header', WarcRecord.CONTENT_LENGTH)
                 self.trailing_newlines = 2
