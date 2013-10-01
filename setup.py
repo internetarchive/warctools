@@ -9,12 +9,12 @@ version = fh.readline()
 fh.close()
 version.strip()
 
-setup(name='hanzo-warctools',
+setup(name='warctools',
     version=version,
     license="MIT License",
     description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
     author='Thomas Figg',
-    author_email='thomas.figg@hanzoarchives.com',
+    author_email='tef@warctools.twentygototen.org'
     packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
 #    namespace_packages=["hanzo"],
     test_suite="hanzo.httptools.tests",
