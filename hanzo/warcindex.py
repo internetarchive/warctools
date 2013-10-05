@@ -28,13 +28,13 @@ def main(argv):
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         
-    print '#WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length'
+    print('#WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length')
     for name in expand_files(input_files):
         fh = WarcRecord.open_archive(name, gzip="auto")
 
         for (offset, record, errors) in fh.read_records(limit=None):
             if record:
-                print name, offset, record.type, record.url, record.id, record.content_type, record.content_length
+                print(name, offset, record.type, record.url, record.id, record.content_type, record.content_length)
             elif errors:
                 pass
                 # ignore

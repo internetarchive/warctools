@@ -25,7 +25,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
         record_class = guess_record_type(file_handle)
 
     if record_class == None:
-        raise StandardError('Failed to guess compression')
+        raise Exception('Failed to guess compression')
 
     record_parser = record_class.make_parser()
 
@@ -80,7 +80,7 @@ class RecordStream(object):
                 yield record
             elif errors:
                 error_str = ",".join(str(error) for error in errors)
-                raise StandardError("Errors while decoding %s" % error_str)
+                raise Exception("Errors while decoding %s" % error_str)
             else:
                 break
 

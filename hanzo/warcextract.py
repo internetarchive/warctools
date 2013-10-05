@@ -49,9 +49,9 @@ def dump_record(fh):
         if record:
             sys.stdout.write(record.content[1])
         elif errors:
-            print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
+            print("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
             for e in errors:
-                print '\t', e
+                print('\t', e)
         break # only use one (I'm terrible)
 
 

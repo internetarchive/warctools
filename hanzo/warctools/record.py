@@ -12,9 +12,9 @@ def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
 
     def _add_headers(cls):
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(cls, k, v)
-        cls._HEADERS = kwargs.keys()
+        cls._HEADERS = list(kwargs.keys())
         return cls
     return _add_headers
 
@@ -76,28 +76,28 @@ class ArchiveRecord(object):
         self.headers.append((name, value))
 
     def dump(self, content=True):
-        print 'Headers:'
+        print('Headers:')
         for (h, v) in self.headers:
-            print '\t%s:%s' % (h, v)
+            print('\t%s:%s' % (h, v))
         if content and self.content:
-            print 'Content Headers:'
+            print('Content Headers:')
             content_type, content_body = self.content
-            print '\t', self.CONTENT_TYPE, ':', content_type
-            print '\t', self.CONTENT_LENGTH, ':', len(content_body)
-            print 'Content:'
+            print('\t', self.CONTENT_TYPE, ':', content_type)
+            print('\t', self.CONTENT_LENGTH, ':', len(content_body))
+            print('Content:')
             ln = min(1024, len(content_body))
-            print '\t', strip.sub(lambda x: '\\x%00X' % ord(x.group()),
-                                  content_body[:ln])
-            print '\t...'
-            print
+            print('\t', strip.sub(lambda x: '\\x%00X' % ord(x.group()),
+                                  content_body[:ln]))
+            print('\t...')
+            print()
         else:
-            print 'Content: none'
-            print
-            print
+            print('Content: none')
+            print()
+            print()
         if self.errors:
-            print 'Errors:'
+            print('Errors:')
             for e in self.errors:
-                print '\t', e
+                print('\t', e)
 
     def write_to(self, out, newline='\x0D\x0A', gzip=False):
         if gzip:
@@ -125,4 +125,4 @@ class ArchiveRecord(object):
         errors).  Either records is null or errors is null. Any
         record-specific errors are contained in the record - errors is only
         used when *nothing* could be parsed"""
-        raise StandardError()
+        raise Exception()

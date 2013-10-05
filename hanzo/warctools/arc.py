@@ -136,7 +136,7 @@ class ArcParser(ArchiveParser):
                                      raw_headers=raw_headers)
         else:
             if not self.headers:
-                raise StandardError('missing filedesc')
+                raise Exception('missing filedesc')
             headers = self.parse_header_list(line)
             content_type, content_length, errors = \
                 self.get_content_headers(headers)
@@ -182,9 +182,9 @@ class ArcParser(ArchiveParser):
                 values = SPLIT(line, len(self.headers)-1)
 
         if len(self.headers) != len(values):
-            raise StandardError('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
+            raise Exception('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
                 
-        return zip(self.headers, values)
+        return list(zip(self.headers, values))
 
 
     @staticmethod

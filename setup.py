@@ -5,9 +5,8 @@ import glob
 from setuptools import setup
 
 fh = open("version", "rb")
-version = fh.readline()
+version = fh.readline().strip().decode('utf-8')
 fh.close()
-version.strip()
 
 setup(name='warctools',
     version=version,

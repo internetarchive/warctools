@@ -14,7 +14,7 @@ import re
 import zlib
 
 
-class ParseError(StandardError):
+class ParseError(Exception):
     """Baseclass for all http parsing errors"""
     pass
 

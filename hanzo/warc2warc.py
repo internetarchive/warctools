@@ -54,7 +54,7 @@ def process(record, out, options):
                         error.append("%d bytes unparsed"%len(leftover))
                     if not message.complete():
                         error.append("incomplete message (at %s, %s)"%(message.mode, message.header.mode))
-                    print >> sys.stderr, 'errors decoding http in record', record.id, ",".join(error)
+                    print('errors decoding http in record', record.id, ",".join(error), file=sys.stderr)
 
     record.write_to(out, gzip=options.gzip)
 

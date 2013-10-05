@@ -1,1 +1,1 @@
-from parse_test import *
+from .parse_test import *

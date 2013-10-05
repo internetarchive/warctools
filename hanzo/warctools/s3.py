@@ -1,6 +1,6 @@
-from urlparse import urlparse
+from urllib.parse import urlparse
 
-from cStringIO import StringIO
+from io import StringIO
 
 try:
     from boto.s3.connection import S3Connection

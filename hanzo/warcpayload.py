@@ -5,7 +5,7 @@ import sys
 
 import sys
 import os.path
-from cStringIO import StringIO
+from io import StringIO
 
 from optparse import OptionParser
 from contextlib import closing
@@ -48,9 +48,9 @@ def extract_payload_from_stream(fh):
             if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
                 content = parse_http_response(record)
         elif errors:
-            print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
+            print("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
             for e in errors:
-                print '\t', e
+                print('\t', e)
 
         return content
 
@@ -60,9 +60,9 @@ def parse_http_response(record):
     message.close()
     if remainder or not message.complete():
         if remainder:
-            print >>sys.stderr, 'warning: trailing data in http response for', record.url
+            print('warning: trailing data in http response for', record.url, file=sys.stderr)
         if not message.complete():
-            print >>sys.stderr, 'warning: truncated http response for', record.url
+            print('warning: truncated http response for', record.url, file=sys.stderr)
 
     return message.get_body()
 
