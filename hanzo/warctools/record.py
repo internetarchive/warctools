@@ -99,7 +99,7 @@ class ArchiveRecord(object):
             for e in self.errors:
                 print('\t', e)
 
-    def write_to(self, out, newline='\x0D\x0A', gzip=False):
+    def write_to(self, out, newline=b'\x0D\x0A', gzip=False):
         if gzip:
             out = GzipFile(fileobj=out)
         self._write_to(out, newline)

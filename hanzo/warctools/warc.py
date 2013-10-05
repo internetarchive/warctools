@@ -82,14 +82,14 @@ class WarcRecord(ArchiveRecord):
         content_length = len(content_buffer)
         out.write(self.CONTENT_LENGTH)
         out.write(b": ")
-        out.write(str(content_length))
+        out.write(str(content_length).encode('utf-8'))
         out.write(nl)
 
         block_digest = self.block_digest(content_buffer)
 
         out.write(self.BLOCK_DIGEST)
         out.write(b": ")
-        out.write(block_digest)
+        out.write(block_digest.encode('utf-8'))
         out.write(nl)
 
         # end of header blank nl

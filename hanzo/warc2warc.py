@@ -61,7 +61,7 @@ def process(record, out, options):
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
+    out = sys.stdout.buffer
     if len(input_files) < 1:
         fh = WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)
 
