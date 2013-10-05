@@ -66,7 +66,7 @@ class RecordStream(object):
         or record is none and errors is a list"""
 
         nrecords = 0
-        while nrecords < limit or limit is None:
+        while limit is None or nrecords < limit:
             offset, record, errors = self._read_record(offsets)
             nrecords += 1
             yield (offset, record, errors)
@@ -142,14 +142,14 @@ class GzipFileStream(RecordStream):
 
 
 CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
-line_rx = re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
+line_rx = re.compile(b'^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
                      re.DOTALL)
 
 class GzipRecordFile(object):
     """A file like class providing 'readline' over catted gzip'd records"""
     def __init__(self, fh):
         self.fh = fh
-        self.buffer = ""
+        self.buffer = b""
         self.z = zlib.decompressobj(16+zlib.MAX_WBITS)
         self.done = False
 
@@ -163,7 +163,7 @@ class GzipRecordFile(object):
             if match:
                 output = match.group('line')
 
-                self.buffer = ""+match.group('tail')
+                self.buffer = b""+match.group('tail')
                 return output
 
             elif self.done:
@@ -178,7 +178,7 @@ class GzipRecordFile(object):
 
         # if we hit a \r on reading a chunk boundary, read a little more
         # in case there is a following \n
-        while out.endswith('\r') and not self.z.unused_data:
+        while out.endswith(b'\r') and not self.z.unused_data:
             chunk = self.fh.read(CHUNK_SIZE)
             if not chunk:
                 break
@@ -220,7 +220,7 @@ class GzipRecordFile(object):
                 break
             length += len(chunk)
             chunks.append(chunk)
-        self.buffer += "".join(chunks)
+        self.buffer += b"".join(chunks)
 
         output = self.buffer[:count]
         self.buffer = self.buffer[count:]

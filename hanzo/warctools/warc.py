@@ -10,18 +10,18 @@ bad_lines = 5 # when to give up looking for the version stamp
 
 
 @ArchiveRecord.HEADERS(
-    DATE='WARC-Date',
-    TYPE='WARC-Type',
-    ID='WARC-Record-ID',
-    CONCURRENT_TO='WARC-Concurrent-To',
-    REFERS_TO='WARC-Refers-To',
-    CONTENT_LENGTH='Content-Length',
-    CONTENT_TYPE='Content-Type',
-    URL='WARC-Target-URI',
-    BLOCK_DIGEST='WARC-Block-Digest',
-    IP_ADDRESS='WARC-IP-Address',
-    FILENAME='WARC-Filename',
-    WARCINFO_ID='WARC-Warcinfo-ID',
+    DATE = b'WARC-Date',
+    TYPE = b'WARC-Type',
+    ID = b'WARC-Record-ID',
+    CONCURRENT_TO = b'WARC-Concurrent-To',
+    REFERS_TO = b'WARC-Refers-To',
+    CONTENT_LENGTH = b'Content-Length',
+    CONTENT_TYPE = b'Content-Type',
+    URL = b'WARC-Target-URI',
+    BLOCK_DIGEST = b'WARC-Block-Digest',
+    IP_ADDRESS = b'WARC-IP-Address',
+    FILENAME = b'WARC-Filename',
+    WARCINFO_ID = b'WARC-Warcinfo-ID',
 )
 class WarcRecord(ArchiveRecord):
 
@@ -30,15 +30,15 @@ class WarcRecord(ArchiveRecord):
 
     # pylint: disable-msg=E1101
 
-    VERSION = "WARC/1.0"
-    VERSION18 = "WARC/0.18"
-    VERSION17 = "WARC/0.17"
-    RESPONSE = "response"
-    RESOURCE = "resource"
-    REQUEST = "request"
-    METADATA = "metadata"
-    CONVERSION = "conversion"
-    WARCINFO = "warcinfo"
+    VERSION = b"WARC/1.0"
+    VERSION18 = b"WARC/0.18"
+    VERSION17 = b"WARC/0.17"
+    RESPONSE = b"response"
+    RESOURCE = b"resource"
+    REQUEST = b"request"
+    METADATA = b"metadata"
+    CONVERSION = b"conversion"
+    WARCINFO = b"warcinfo"
 
     def __init__(self, version=VERSION, headers=None, content=None,
                  errors=None):
@@ -66,29 +66,29 @@ class WarcRecord(ArchiveRecord):
                          self.CONTENT_LENGTH,
                          self.BLOCK_DIGEST):
                 out.write(k)
-                out.write(": ")
+                out.write(b": ")
                 out.write(v)
                 out.write(nl)
         content_type, content_buffer = self.content
-        content_buffer = buffer(content_buffer)
+        content_buffer = memoryview(content_buffer)
         if content_type:
             out.write(self.CONTENT_TYPE)
-            out.write(": ")
+            out.write(b": ")
             out.write(content_type)
             out.write(nl)
         if content_buffer is None:
-            content_buffer = ""
+            content_buffer = b""
 
         content_length = len(content_buffer)
         out.write(self.CONTENT_LENGTH)
-        out.write(": ")
+        out.write(b": ")
         out.write(str(content_length))
         out.write(nl)
 
         block_digest = self.block_digest(content_buffer)
 
         out.write(self.BLOCK_DIGEST)
-        out.write(": ")
+        out.write(b": ")
         out.write(block_digest)
         out.write(nl)
 
@@ -121,14 +121,14 @@ def rx(pat):
     """Helper to compile regexps with IGNORECASE option set."""
     return re.compile(pat, flags=re.IGNORECASE)
 
-version_rx = rx(r'^(?P<prefix>.*?)(?P<version>\s*WARC/(?P<number>.*?))'
-                '(?P<nl>\r\n|\r|\n)\\Z')
+version_rx = rx(br'^(?P<prefix>.*?)(?P<version>\s*WARC/(?P<number>.*?))'
+                b'(?P<nl>\r\n|\r|\n)\\Z')
 # a header is key: <ws> value plus any following lines with leading whitespace
-header_rx = rx(r'^(?P<name>.*?):\s?(?P<value>.*?)' '(?P<nl>\r\n|\r|\n)\\Z')
-value_rx = rx(r'^\s+(?P<value>.+?)' '(?P<nl>\r\n|\r|\n)\\Z')
-nl_rx = rx('^(?P<nl>\r\n|\r|\n\\Z)')
-length_rx = rx('^%s$' % WarcRecord.CONTENT_LENGTH) # pylint: disable-msg=E1101
-type_rx = rx('^%s$' % WarcRecord.CONTENT_TYPE)     # pylint: disable-msg=E1101
+header_rx = rx(br'^(?P<name>.*?):\s?(?P<value>.*?)' b'(?P<nl>\r\n|\r|\n)\\Z')
+value_rx = rx(br'^\s+(?P<value>.+?)' b'(?P<nl>\r\n|\r|\n)\\Z')
+nl_rx = rx(b'^(?P<nl>\r\n|\r|\n\\Z)')
+length_rx = rx(b'^' + WarcRecord.CONTENT_LENGTH + b'$' ) # pylint: disable-msg=E1101
+type_rx = rx(b'^' + WarcRecord.CONTENT_TYPE + b'$')     # pylint: disable-msg=E1101
 
 required_headers = set((
         WarcRecord.TYPE.lower(),           # pylint: disable-msg=E1101
@@ -163,7 +163,7 @@ class WarcParser(ArchiveParser):
                     if offset is not None:
                         offset += len(line)
                     newlines -= 1
-                    if match.group('nl') != '\x0d\x0a':
+                    if match.group('nl') != b'\x0d\x0a':
                         errors.append(('incorrect trailing newline',
                                        match.group('nl')))
                     line = stream.readline()
@@ -203,7 +203,7 @@ class WarcParser(ArchiveParser):
 
             record = WarcRecord(errors=errors, version=version)
 
-            if match.group('nl') != '\x0d\x0a':
+            if match.group('nl') != b'\x0d\x0a':
                 record.error('incorrect newline in version', match.group('nl'))
 
             if match.group('number') not in self.KNOWN_VERSIONS:
@@ -223,7 +223,7 @@ class WarcParser(ArchiveParser):
                 #print 'header', repr(line)
                 match = header_rx.match(line)
                 if match:
-                    if match.group('nl') != '\x0d\x0a':
+                    if match.group('nl') != b'\x0d\x0a':
                         record.error('incorrect newline in header',
                                      match.group('nl'))
                     name = match.group('name').strip()
@@ -234,14 +234,14 @@ class WarcParser(ArchiveParser):
                     match = value_rx.match(line)
                     while match:
                         #print 'follow', repr(line)
-                        if match.group('nl') != '\x0d\x0a':
+                        if match.group('nl') != b'\x0d\x0a':
                             record.error('incorrect newline in follow header',
                                          line, match.group('nl'))
                         value.append(match.group('value').strip())
                         line = stream.readline()
                         match = value_rx.match(line)
 
-                    value = " ".join(value)
+                    value = b" ".join(value)
 
                     if type_rx.match(name):
                         if value:
@@ -307,7 +307,7 @@ class WarcParser(ArchiveParser):
                 #print 'trimming', repr(line)
                 match = nl_rx.match(line)
                 if match:
-                    if match.group('nl') != '\x0d\x0a':
+                    if match.group('nl') != b'\x0d\x0a':
                         errors.append('incorrect trailing newline',
                                       match.group('nl'))
                     newlines -= 1
@@ -328,7 +328,7 @@ class WarcParser(ArchiveParser):
         return errors
 
 
-blank_rx = rx(r'^$')
+blank_rx = rx(br'^$')
 register_record_type(version_rx, WarcRecord)
 register_record_type(blank_rx, WarcRecord)
 

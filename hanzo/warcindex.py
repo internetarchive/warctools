@@ -24,17 +24,25 @@ parser.set_defaults(output=None, limit=None, log_level="info")
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
+    out = sys.stdout.buffer
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         
-    print('#WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length')
+    out.write(b'#WARC filename offset warc-type warc-subject-uri warc-record-id content-type content-length\n')
     for name in expand_files(input_files):
         fh = WarcRecord.open_archive(name, gzip="auto")
 
         for (offset, record, errors) in fh.read_records(limit=None):
             if record:
-                print(name, offset, record.type, record.url, record.id, record.content_type, record.content_length)
+                fields = [name.encode('utf-8'), 
+                        str(offset).encode('utf-8'),
+                        record.type or b'-', 
+                        record.url or b'-', 
+                        record.id or b'-', 
+                        record.content_type or b'-',
+                        str(record.content_length).encode('utf-8'), 
+                        b'\n']
+                out.write(b' '.join(fields))
             elif errors:
                 pass
                 # ignore
@@ -46,8 +54,6 @@ def main(argv):
 
 
         fh.close()
-
-
 
     return 0
 
