@@ -19,6 +19,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     CONTENT_TYPE='Content-Type',
     URL='WARC-Target-URI',
     BLOCK_DIGEST='WARC-Block-Digest',
+    PAYLOAD_DIGEST='WARC-Payload-Digest',
     IP_ADDRESS='WARC-IP-Address',
     FILENAME='WARC-Filename',
     WARCINFO_ID='WARC-Warcinfo-ID',
@@ -63,12 +64,12 @@ class WarcRecord(ArchiveRecord):
         out.write(nl)
         for k, v in self.headers:
             if k not in (self.CONTENT_TYPE,
-                         self.CONTENT_LENGTH,
-                         self.BLOCK_DIGEST):
+                         self.CONTENT_LENGTH):
                 out.write(k)
                 out.write(": ")
                 out.write(v)
                 out.write(nl)
+
         content_type, content_buffer = self.content
         content_buffer = buffer(content_buffer)
         if content_type:
@@ -83,13 +84,6 @@ class WarcRecord(ArchiveRecord):
         out.write(self.CONTENT_LENGTH)
         out.write(": ")
         out.write(str(content_length))
-        out.write(nl)
-
-        block_digest = self.block_digest(content_buffer)
-
-        out.write(self.BLOCK_DIGEST)
-        out.write(": ")
-        out.write(block_digest)
         out.write(nl)
 
         # end of header blank nl
