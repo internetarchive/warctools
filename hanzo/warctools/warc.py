@@ -5,6 +5,7 @@ import re
 import hashlib
 from hanzo.warctools.record import ArchiveRecord, ArchiveParser
 from hanzo.warctools.archive_detect import register_record_type
+import uuid
 
 bad_lines = 5 # when to give up looking for the version stamp
 
@@ -133,6 +134,15 @@ class WarcRecord(ArchiveRecord):
 
         digest = "sha256:%s" % block_hash.hexdigest()
         return digest
+
+    @staticmethod
+    def warc_uuid(text):
+        return "<urn:uuid:{}>".format(uuid.UUID(hashlib.sha1(text).hexdigest()[0:32]))
+
+    @staticmethod
+    def random_warc_uuid():
+        return "<urn:uuid:{}>".format(uuid.uuid4())
+
 
 def rx(pat):
     """Helper to compile regexps with IGNORECASE option set."""
