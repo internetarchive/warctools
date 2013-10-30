@@ -16,6 +16,8 @@ bad_lines = 5 # when to give up looking for the version stamp
     ID='WARC-Record-ID',
     CONCURRENT_TO='WARC-Concurrent-To',
     REFERS_TO='WARC-Refers-To',
+    REFERS_TO_TARGET_URI='WARC-Refers-To-Target-URI',
+    REFERS_TO_DATE='WARC-Refers-To-Date',
     CONTENT_LENGTH='Content-Length',
     CONTENT_TYPE='Content-Type',
     URL='WARC-Target-URI',
@@ -24,6 +26,7 @@ bad_lines = 5 # when to give up looking for the version stamp
     IP_ADDRESS='WARC-IP-Address',
     FILENAME='WARC-Filename',
     WARCINFO_ID='WARC-Warcinfo-ID',
+    PROFILE='WARC-Profile'
 )
 class WarcRecord(ArchiveRecord):
 
@@ -38,9 +41,15 @@ class WarcRecord(ArchiveRecord):
     RESPONSE = "response"
     RESOURCE = "resource"
     REQUEST = "request"
+    REVISIT = "revisit"
     METADATA = "metadata"
     CONVERSION = "conversion"
     WARCINFO = "warcinfo"
+
+    PROFILE_IDENTICAL_PAYLOAD_DIGEST = "http://netpreserve.org/warc/1.0/revisit/identical-payload-digest"
+
+    HTTP_REQUEST_MIMETYPE = "application/http;msgtype=request"
+    HTTP_RESPONSE_MIMETYPE = "application/http;msgtype=response"
 
     def __init__(self, version=VERSION, headers=None, content=None,
                  errors=None, content_file=None):
