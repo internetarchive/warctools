@@ -1,6 +1,5 @@
 """Read records from normal file and compressed file"""
 
-import zlib
 import gzip
 import re
 
@@ -53,8 +52,7 @@ class RecordStream(object):
     def __init__(self, file_handle, record_parser):
         self.fh = file_handle
         self.record_parser = record_parser
-        self.record_fh = None
-
+        self.bytes_to_eor = None
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
@@ -86,11 +84,11 @@ class RecordStream(object):
 
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
-        if self.record_fh is not None:
-            self.record_fh.skip_to_end()
+        if self.bytes_to_eor is not None:
+            self._skip_to_eor()  # skip to end of previous record
+        self.bytes_to_eor = None
         offset = self.fh.tell() if offsets else None
-        self.record_fh = RecordFile(self.fh)
-        record, errors, offset = self.record_parser.parse(self.record_fh, offset)
+        record, errors, offset = self.record_parser.parse(self, offset)
         return offset, record, errors
 
     def write(self, record):
@@ -101,24 +99,48 @@ class RecordStream(object):
         """Close the underlying file handle."""
         self.fh.close()
 
+    def _skip_to_eor(self):
+        if self.bytes_to_eor is None:
+            raise Exception('bytes_to_eor is unset, cannot skip to end')
+
+        while self.bytes_to_eor > 0:
+            read_size = min(CHUNK_SIZE, self.bytes_to_eor)
+            buf = self.read(read_size)
+            if len(buf) < read_size:
+                raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
+
+    def read(self, count):
+        result = self.fh.read(count)
+        if self.bytes_to_eor is not None:
+            self.bytes_to_eor -= len(result)
+        return result
+
+    def readline(self):
+        result = self.fh.readline()
+        if self.bytes_to_eor is not None:
+            self.bytes_to_eor -= len(result)
+        return result
+
+CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
+
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped
     archive records"""
     def __init__(self, file_handle, record_parser):
-        RecordStream.__init__(self, file_handle, record_parser)
-        self.record_fh = None
+        RecordStream.__init__(self, gzip.GzipFile(fileobj=file_handle), record_parser)
+        self.raw_fh = file_handle
 
     def _read_record(self, offsets):
-        errors = []
-        if self.record_fh is not None:
-            self.record_fh.skip_to_end()
-            self.record_fh.close()
+        if self.bytes_to_eor is not None:
+            self._skip_to_eor()  # skip to end of previous record
+        self.bytes_to_eor = None
 
-        offset = self.fh.tell() if offsets else None
-        self.record_fh = GzipRecordFile(self.fh)
-        record, r_errors, _offset = \
-            self.record_parser.parse(self.record_fh, offset=None)
-        errors.extend(r_errors)
+        # self.raw_fh.tell() is only accurate when we've just finished reading
+        # a gzip member, which should be the case now
+        offset = self.raw_fh.tell() if offsets else None
+
+        record, errors, _offset = \
+            self.record_parser.parse(self, offset=None)
         return offset, record, errors
 
 
@@ -131,129 +153,3 @@ class GzipFileStream(RecordStream):
         # no real offsets in a gzipped file (no seperate records)
         return RecordStream._read_record(self, False)
 
-### record-gzip handler, based on zlib
-### implements readline() access over a a single
-### gzip-record. must be re-created to read another record
-
-
-CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
-line_rx = re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
-                     re.DOTALL)
-
-class RecordFile(object):
-    def __init__(self, fh):
-        self.fh = fh
-        self.expected_bytes_left = None
-
-    def readline(self):
-        output = self.fh.readline()
-        if self.expected_bytes_left is not None:
-            self.expected_bytes_left -= len(output)
-        return output
-
-    def read(self, count):
-        output = self.fh.read(count)
-        if self.expected_bytes_left is not None:
-            self.expected_bytes_left -= len(output)
-        return output
-
-    def skip_to_end(self):
-        if self.expected_bytes_left is None:
-            raise Exception('expected_bytes_left is unset, cannot skip to end')
-
-        while self.expected_bytes_left > 0:
-            read_size = min(CHUNK_SIZE, self.expected_bytes_left)
-            buf = self.read(read_size)
-            if len(buf) < read_size:
-                raise Exception('expected {} more bytes but only read {}'.format(self.expected_bytes_left, len(buf)))
-
-
-class GzipRecordFile(RecordFile):
-    """A file like class providing 'readline' over catted gzip'd records"""
-    def __init__(self, fh):
-        RecordFile.__init__(self, fh)
-        self.buffer = ""
-        self.z = zlib.decompressobj(16+zlib.MAX_WBITS)
-        self.done = False
-        self.expected_bytes_left = None
-
-
-    def _getline(self):
-        if self.buffer:
-            #a,nl,b
-            match = line_rx.match(self.buffer)
-            #print match
-            # print 'split:', split[0],split[1], len(split[2])
-            if match:
-                output = match.group('line')
-
-                self.buffer = ""+match.group('tail')
-                return output
-
-            elif self.done:
-                output = self.buffer
-                self.buffer = ""
-
-                return output
-
-    def _read_chunk(self):
-        chunk = self.fh.read(CHUNK_SIZE)
-        out = self.z.decompress(chunk)
-
-        # if we hit a \r on reading a chunk boundary, read a little more
-        # in case there is a following \n
-        while out.endswith('\r') and not self.z.unused_data:
-            chunk = self.fh.read(CHUNK_SIZE)
-            if not chunk:
-                break
-            tail = self.z.decompress(chunk)
-            if tail:
-                out += tail
-                break
-
-        if self.z.unused_data:
-            self.fh.seek(-len(self.z.unused_data), 1)
-            self.done = True
-
-        if not chunk:
-            self.done = True
-
-        return out
-
-    def readline(self):
-        while True:
-            output = self._getline()
-            if output:
-                if self.expected_bytes_left is not None:
-                    self.expected_bytes_left -= len(output)
-                return output
-
-            if self.done:
-                return ""
-
-            chunk = self._read_chunk()
-            if chunk:
-                self.buffer += chunk
-
-    def read(self, count):
-        """Reads `count` bytes from the stream. The output will be truncated if
-        there are less than `count` bytes remaining in the stream."""
-        length = len(self.buffer)
-        chunks = []
-        while not self.done and length < count:
-            chunk = self._read_chunk()
-            if not chunk:
-                break
-            length += len(chunk)
-            chunks.append(chunk)
-        self.buffer += "".join(chunks)
-
-        output = self.buffer[:count]
-        self.buffer = self.buffer[count:]
-        if self.expected_bytes_left is not None:
-            self.expected_bytes_left -= len(output)
-        return output
-
-    def close(self):
-        if self.z:
-            self.z.flush()

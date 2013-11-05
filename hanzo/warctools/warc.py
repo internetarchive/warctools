@@ -319,27 +319,10 @@ class WarcParser(ArchiveParser):
             # have read blank line following headers
 
             record.content_file = stream
-            record.content_file.expected_bytes_left = content_length + 4   # "\r\n\r\n"
+            record.content_file.bytes_to_eor = content_length + 4   # "\r\n\r\n"
 
-            # Fixed: READLINE BUG - eats trailing terminating newlines
-            # when content doesn't have a \n
-
-            #print 'read content', repr(line)
-            # have read trailing newlines
-
-            # check mandatory headers
-            #   WARC-Type
-            #   WARC-Date WARC-Record-ID Content-Length
-
-            # ignore mandatory newlines for now
-            # because they are missing.
-            # instead we trim a number of them off the next
-            # parse
-
-            # we can't re-wind easily without wrapping
-            # every file handle
-
-            # not brilliant but hey-ho
+            # check mandatory headers 
+            # WARC-Type WARC-Date WARC-Record-ID Content-Length
 
             return (record, (), offset)
 
