@@ -105,23 +105,45 @@ class RecordStream(object):
 
         while self.bytes_to_eor > 0:
             read_size = min(CHUNK_SIZE, self.bytes_to_eor)
-            buf = self.read(read_size)
+            buf = self._read(read_size)
             if len(buf) < read_size:
                 raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
 
-    def read(self, count):
-        read_size = count
-        if self.bytes_to_eor is not None:
-            read_size = min(count, self.bytes_to_eor)
-        result = self.fh.read(read_size)
+    def _read(self, count):
+        """Raw read, will read into next record if caller isn't careful"""
+        result = self.fh.read(count)
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
         return result
 
+    def read(self, count):
+        """Safe read for reading content, will not read past the end of the
+        payload, assuming self.bytes_to_eor is set. The record's trailing
+        "\\r\\n\\r\\n" will remain when this method returns "".
+        """
+        if self.bytes_to_eor is not None:
+            read_size = min(count, self.bytes_to_eor - 4)
+        return self._read(read_size)
+
     def readline(self, maxlen=None):
-        if self.bytes_to_eor == 0:
-            return ''
-        result = self.fh.readline(maxlen)
+        """Safe readline for reading content, will not read past the end of the
+        payload, assuming self.bytes_to_eor is set. The record's trailing
+        "\\r\\n\\r\\n" will remain when this method returns "".
+        """
+        if self.bytes_to_eor is not None and maxlen is not None:
+            lim = min(maxlen, max(self.bytes_to_eor - 4, 0))
+        elif self.bytes_to_eor is not None:
+            lim = max(self.bytes_to_eor - 4, 0)
+        elif maxlen is not None:
+            lim = maxlen
+        else:
+            lim = None
+
+        if lim is not None:
+            result = self.fh.readline(lim)
+        else:
+            result = self.fh.readline()
+       
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
         return result
