@@ -6,7 +6,7 @@ import re
 from hanzo.warctools.archive_detect import is_gzip_file, guess_record_type
 
 def open_record_stream(record_class=None, filename=None, file_handle=None,
-                       mode="rb+", gzip="auto", offset=None, length=None):
+                       mode="rb", gzip="auto", offset=None, length=None):
     """Can take a filename or a file_handle. Normally called
     indirectly from A record class i.e WarcRecord.open_archive. If the
     first parameter is None, will try to guess"""

@@ -115,7 +115,7 @@ class ArchiveRecord(object):
     ### class methods for parsing
     @classmethod
     def open_archive(cls, filename=None, file_handle=None,
-                     mode="rb+", gzip="auto", offset=None, length=None):
+                     mode="rb", gzip="auto", offset=None, length=None):
         """Generically open an archive - magic autodetect"""
         if cls is ArchiveRecord:
             cls = None # means guess
