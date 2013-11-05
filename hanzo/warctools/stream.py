@@ -52,6 +52,9 @@ class RecordStream(object):
     def __init__(self, file_handle, record_parser):
         self.fh = file_handle
         self.record_parser = record_parser
+
+        # Number of bytes until the end of the record, if known. Normally set
+        # by the record parser based on the Content-Length header.
         self.bytes_to_eor = None
 
     def seek(self, offset, pos=0):
@@ -109,20 +112,32 @@ class RecordStream(object):
             if len(buf) < read_size:
                 raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
 
-    def _read(self, count):
+    def _read(self, count=None):
         """Raw read, will read into next record if caller isn't careful"""
-        result = self.fh.read(count)
+        if count is not None:
+            result = self.fh.read(count)
+        else:
+            result = self.fh.read()
+
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
+
         return result
 
-    def read(self, count):
+    def read(self, count=None):
         """Safe read for reading content, will not read past the end of the
         payload, assuming self.bytes_to_eor is set. The record's trailing
         "\\r\\n\\r\\n" will remain when this method returns "".
         """
-        if self.bytes_to_eor is not None:
-            read_size = min(count, self.bytes_to_eor - 4)
+        if self.bytes_to_eor is not None and count is not None:
+            read_size = min(count, max(self.bytes_to_eor - 4, 0))
+        elif self.bytes_to_eor is not None:
+            read_size = max(self.bytes_to_eor - 4, 0)
+        elif count is not None:
+            read_size = count
+        else:
+            read_size = None
+
         return self._read(read_size)
 
     def readline(self, maxlen=None):
@@ -143,7 +158,7 @@ class RecordStream(object):
             result = self.fh.readline(lim)
         else:
             result = self.fh.readline()
-       
+
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
         return result
@@ -171,7 +186,6 @@ class GzipRecordStream(RecordStream):
     archive records"""
     def __init__(self, file_handle, record_parser):
         RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
-        self.raw_fh = file_handle
 
     def _read_record(self, offsets):
         if self.bytes_to_eor is not None:
@@ -191,6 +205,14 @@ class GzipFileStream(RecordStream):
         RecordStream.__init__(self, gzip.GzipFile(fileobj=file_handle), record)
 
     def _read_record(self, offsets):
-        # no real offsets in a gzipped file (no seperate records)
-        return RecordStream._read_record(self, False)
+        # no useful offsets in a gzipped file
+
+        if self.bytes_to_eor is not None:
+            self._skip_to_eor()  # skip to end of previous record
+        self.bytes_to_eor = None
+
+        record, errors, _offset = \
+            self.record_parser.parse(self, offset=None)
+
+        return offset, record, errors
 

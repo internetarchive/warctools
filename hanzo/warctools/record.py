@@ -59,8 +59,40 @@ class ArchiveRecord(object):
         return self.content[0]
 
     @property
+    def content(self):
+        if self._content is None:
+            content_type = self.get_header(self.CONTENT_TYPE)
+            try:
+                content = self.content_file.read()
+                self._content = (content_type, content)
+            finally:
+                self.content_file = None
+
+        return self._content
+
+    @property
+    def content_type(self):
+        """If self.content tuple was supplied, or has already been snarfed, or
+        we don't have a Content-Type header, return self.content[0]. Otherwise, 
+        return the value of the Content-Type header."""
+        if self._content is None:
+            content_type = self.get_header(self.CONTENT_TYPE)
+            if content_type is not None:
+                return content_type
+
+        return ArchiveRecord.self.content_type
+
+    @property
     def content_length(self):
-        return len(self.content[1])
+        """If self.content tuple was supplied, or has already been snarfed, or
+        we don't have a Content-Length header, return len(self.content[1]).
+        Otherwise, return the value of the Content-Length header."""
+        if self._content is None:
+            content_length = self.get_header(self.CONTENT_LENGTH)
+            if content_length is not None:
+                return content_length
+
+        return ArchiveRecord.self.content_length
 
     @property
     def url(self):

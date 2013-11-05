@@ -68,52 +68,6 @@ class WarcRecord(ArchiveRecord):
     def id(self):
         return self.get_header(self.ID)
 
-    @property
-    def content(self):
-        if self._content is None:
-            expected_length = int(self.get_header('Content-Length'))
-            content_type = self.get_header('Content-Type')
-
-            try:
-                if expected_length is not None:
-                    if expected_length > 0:
-                        # read content
-                        content = self.content_file.read(expected_length)
-                        if len(content) != expected_length:
-                            self.error('content length mismatch (is, claims)',
-                                         len(content), expected_length)
-                        self._content = (content_type, content)
-                else:
-                    self.error('missing header', WarcRecord.CONTENT_LENGTH)
-            finally:
-                self.content_file = None
-
-        return self._content
-
-    @property
-    def content_type(self):
-        """If self.content tuple was supplied, or has already been snarfed, or
-        we don't have a Content-Type header, return self.content[0]. Otherwise, 
-        return the value of the Content-Type header."""
-        if self._content is None:
-            content_type = self.get_header('Content-Type')
-            if content_type is not None:
-                return content_type
-
-        return ArchiveRecord.self.content_type
-
-    @property
-    def content_length(self):
-        """If self.content tuple was supplied, or has already been snarfed, or
-        we don't have a Content-Length header, return len(self.content[1]).
-        Otherwise, return the value of the Content-Length header."""
-        if self._content is None:
-            content_length = self.get_header('Content-Length')
-            if content_length is not None:
-                return content_length
-
-        return ArchiveRecord.self.content_length
-
     def _write_to(self, out, nl):
         """WARC Format:
             VERSION NL
@@ -218,9 +172,6 @@ required_headers = set((
 class WarcParser(ArchiveParser):
     KNOWN_VERSIONS = set(('1.0', '0.17', '0.18'))
 
-    def __init__(self):
-        self.trailing_newlines = 0
-
     def parse(self, stream, offset, line=None):
         """Reads a warc record from the stream, returns a tuple
         (record, errors).  Either records is null or errors is
@@ -253,7 +204,6 @@ class WarcParser(ArchiveParser):
         if not line:
             if version:
                 errors.append(('warc version but no headers', version))
-            self.trailing_newlines = 0
             return (None, errors, offset)
         if line:
             content_length = 0
