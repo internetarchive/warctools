@@ -190,6 +190,7 @@ class GzipRecordStream(RecordStream):
     archive records"""
     def __init__(self, file_handle, record_parser):
         RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
+        self.raw_fh = file_handle
 
     def _read_record(self, offsets):
         if self.bytes_to_eor is not None:
@@ -205,6 +206,12 @@ class GzipRecordStream(RecordStream):
             self._current_record_trailer = record.TRAILER
 
         return offset, record, errors
+
+    def seek(self, offset, pos=0):
+        """Same as a seek on a file"""
+        self.raw_fh.seek(offset, pos)
+        # trick to avoid closing and recreating GzipFile, does it always work?
+        self.fh._new_member = True
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
