@@ -123,11 +123,27 @@ class RecordStream(object):
 
 CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
 
+class GeeZipFile(gzip.GzipFile):
+    """Extends gzip.GzipFile to remember self.member_offset, the raw file
+    offset of the current gzip member."""
+
+    def __init__(self, filename=None, mode=None,
+                 compresslevel=9, fileobj=None, mtime=None):
+        gzip.GzipFile.__init__(self, filename, mode, compresslevel, fileobj, mtime)
+        self.member_offset = None
+
+    # hook in to the place we seem to be able to reliably get the raw gzip
+    # member offset
+    def _read(self, size=1024):
+        if self._new_member:
+            self.member_offset = self.fileobj.tell()
+        return gzip.GzipFile._read(self, size)
+
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped
     archive records"""
     def __init__(self, file_handle, record_parser):
-        RecordStream.__init__(self, gzip.GzipFile(fileobj=file_handle), record_parser)
+        RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
         self.raw_fh = file_handle
 
     def _read_record(self, offsets):
@@ -135,14 +151,12 @@ class GzipRecordStream(RecordStream):
             self._skip_to_eor()  # skip to end of previous record
         self.bytes_to_eor = None
 
-        # self.raw_fh.tell() is only accurate when we've just finished reading
-        # a gzip member, which should be the case now
-        offset = self.raw_fh.tell() if offsets else None
-
         record, errors, _offset = \
             self.record_parser.parse(self, offset=None)
-        return offset, record, errors
 
+        offset = self.fh.member_offset
+
+        return offset, record, errors
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
