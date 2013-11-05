@@ -48,6 +48,8 @@ class WarcRecord(ArchiveRecord):
 
     PROFILE_IDENTICAL_PAYLOAD_DIGEST = "http://netpreserve.org/warc/1.0/revisit/identical-payload-digest"
 
+    TRAILER = '\r\n\r\n'
+
     def __init__(self, version=VERSION, headers=None, content=None,
                  errors=None, content_file=None):
         """When writing, either content or content_file must be provided, but

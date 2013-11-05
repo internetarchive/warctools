@@ -92,6 +92,8 @@ class RecordStream(object):
         self.bytes_to_eor = None
         offset = self.fh.tell() if offsets else None
         record, errors, offset = self.record_parser.parse(self, offset)
+        if record is not None:
+            self._current_record_trailer = record.TRAILER
         return offset, record, errors
 
     def write(self, record):
@@ -127,12 +129,13 @@ class RecordStream(object):
     def read(self, count=None):
         """Safe read for reading content, will not read past the end of the
         payload, assuming self.bytes_to_eor is set. The record's trailing
-        "\\r\\n\\r\\n" will remain when this method returns "".
+        bytes, \\r\\n\\r\\n for warcs or \\n for arcs, will remain when this
+        method returns "".
         """
         if self.bytes_to_eor is not None and count is not None:
-            read_size = min(count, max(self.bytes_to_eor - 4, 0))
+            read_size = min(count, max(self.bytes_to_eor - len(self._current_record_trailer), 0))
         elif self.bytes_to_eor is not None:
-            read_size = max(self.bytes_to_eor - 4, 0)
+            read_size = max(self.bytes_to_eor - len(self._current_record_trailer), 0)
         elif count is not None:
             read_size = count
         else:
@@ -143,12 +146,13 @@ class RecordStream(object):
     def readline(self, maxlen=None):
         """Safe readline for reading content, will not read past the end of the
         payload, assuming self.bytes_to_eor is set. The record's trailing
-        "\\r\\n\\r\\n" will remain when this method returns "".
+        bytes, \\r\\n\\r\\n for warcs or \\n for arcs, will remain when this
+        method returns "".
         """
         if self.bytes_to_eor is not None and maxlen is not None:
-            lim = min(maxlen, max(self.bytes_to_eor - 4, 0))
+            lim = min(maxlen, max(self.bytes_to_eor - len(self._current_record_trailer), 0))
         elif self.bytes_to_eor is not None:
-            lim = max(self.bytes_to_eor - 4, 0)
+            lim = max(self.bytes_to_eor - len(self._current_record_trailer), 0)
         elif maxlen is not None:
             lim = maxlen
         else:
@@ -197,6 +201,9 @@ class GzipRecordStream(RecordStream):
 
         offset = self.fh.member_offset
 
+        if record is not None:
+            self._current_record_trailer = record.TRAILER
+
         return offset, record, errors
 
 class GzipFileStream(RecordStream):
@@ -213,6 +220,9 @@ class GzipFileStream(RecordStream):
 
         record, errors, _offset = \
             self.record_parser.parse(self, offset=None)
+
+        if record is not None:
+            self._current_record_trailer = record.TRAILER
 
         return offset, record, errors
 

@@ -1,4 +1,6 @@
-"""An object to represent arc records"""
+"""An object to represent arc records
+http://archive.org/web/researcher/ArcFileFormat.php
+"""
 
 import re
 
@@ -22,6 +24,9 @@ from hanzo.warctools.archive_detect import register_record_type
     FILENAME = 'Filename',
 )
 class ArcRecord(ArchiveRecord):
+
+    TRAILER = '\n'  # an ARC record is trailed by single unix newline
+
     """Represents a record in an arc file."""
     def __init__(self, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self, headers, content, errors) 
@@ -144,7 +149,7 @@ class ArcParser(ArchiveParser):
         line = None
 
         record.content_file = stream
-        record.content_file.bytes_to_eor = content_length + 4   # "\r\n\r\n"
+        record.content_file.bytes_to_eor = content_length
 
         return (record, (), offset)
 
