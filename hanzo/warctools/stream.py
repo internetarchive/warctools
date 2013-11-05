@@ -110,13 +110,18 @@ class RecordStream(object):
                 raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
 
     def read(self, count):
-        result = self.fh.read(count)
+        read_size = count
+        if self.bytes_to_eor is not None:
+            read_size = min(count, self.bytes_to_eor)
+        result = self.fh.read(read_size)
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
         return result
 
-    def readline(self):
-        result = self.fh.readline()
+    def readline(self, maxlen=None):
+        if self.bytes_to_eor == 0:
+            return ''
+        result = self.fh.readline(maxlen)
         if self.bytes_to_eor is not None:
             self.bytes_to_eor -= len(result)
         return result
