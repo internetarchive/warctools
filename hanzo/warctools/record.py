@@ -38,8 +38,8 @@ class ArchiveRecord(object):
 
     def __init__(self, headers=None, content=None, errors=None):
         self.headers = headers if headers else []
-        self.content = content if content else (None, "")
         self.errors = errors if errors else []
+        self._content = content
 
     HEADERS = staticmethod(add_headers)
 
@@ -67,8 +67,10 @@ class ArchiveRecord(object):
         return self.get_header(self.URL)
 
     def get_header(self, name):
+        """Returns value of first header found matching name, case
+        insensitively."""
         for k, v in self.headers:
-            if name == k:
+            if name.lower() == k.lower():
                 return v
 
     def set_header(self, name, value):

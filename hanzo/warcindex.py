@@ -32,22 +32,19 @@ def main(argv):
     for name in expand_files(input_files):
         fh = WarcRecord.open_archive(name, gzip="auto")
 
-        for (offset, record, errors) in fh.read_records(limit=None):
-            if record:
-                print name, offset, record.type, record.url, record.id, record.content_type, record.content_length
-            elif errors:
-                pass
-                # ignore
-            else:
-                pass
-                # no errors at tail
+        try:
+            for (offset, record, errors) in fh.read_records(limit=None):
+                if record:
+                    print name, offset, record.type, record.url, record.id, record.content_type, record.content_length
+                elif errors:
+                    pass
+                    # ignore
+                else:
+                    pass
+                    # no errors at tail
 
-
-
-
-        fh.close()
-
-
+        finally:
+            fh.close()
 
     return 0
 

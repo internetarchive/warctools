@@ -53,7 +53,8 @@ class RecordStream(object):
     def __init__(self, file_handle, record_parser):
         self.fh = file_handle
         self.record_parser = record_parser
-        self._parser = None
+        self.record_fh = None
+
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
@@ -64,7 +65,6 @@ class RecordStream(object):
         Offset is either a number or None.
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
-
         nrecords = 0
         while nrecords < limit or limit is None:
             offset, record, errors = self._read_record(offsets)
@@ -86,8 +86,11 @@ class RecordStream(object):
 
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
+        if self.record_fh is not None:
+            self.record_fh.skip_to_end()
         offset = self.fh.tell() if offsets else None
-        record, errors, offset = self.record_parser.parse(self.fh, offset)
+        self.record_fh = RecordFile(self.fh)
+        record, errors, offset = self.record_parser.parse(self.record_fh, offset)
         return offset, record, errors
 
     def write(self, record):
@@ -103,26 +106,18 @@ class GzipRecordStream(RecordStream):
     archive records"""
     def __init__(self, file_handle, record_parser):
         RecordStream.__init__(self, file_handle, record_parser)
-        self.gz = None
+        self.record_fh = None
 
     def _read_record(self, offsets):
         errors = []
-        if self.gz is not None:
-            # we have an open record, so try for a record at the end
-            # at best will read trailing newlines at end of last record
-            record, r_errors, _offset = \
-                self.record_parser.parse(self.gz, offset=None)
-            if record:
-                record.error('multiple warc records in gzip record file')
-                return None, record, errors
-            self.gz.close()
-            errors.extend(r_errors)
-
+        if self.record_fh is not None:
+            self.record_fh.skip_to_end()
+            self.record_fh.close()
 
         offset = self.fh.tell() if offsets else None
-        self.gz = GzipRecordFile(self.fh)
+        self.record_fh = GzipRecordFile(self.fh)
         record, r_errors, _offset = \
-            self.record_parser.parse(self.gz, offset=None)
+            self.record_parser.parse(self.record_fh, offset=None)
         errors.extend(r_errors)
         return offset, record, errors
 
@@ -145,13 +140,42 @@ CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
 line_rx = re.compile('^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
                      re.DOTALL)
 
-class GzipRecordFile(object):
-    """A file like class providing 'readline' over catted gzip'd records"""
+class RecordFile(object):
     def __init__(self, fh):
         self.fh = fh
+        self.expected_bytes_left = None
+
+    def readline(self):
+        output = self.fh.readline()
+        if self.expected_bytes_left is not None:
+            self.expected_bytes_left -= len(output)
+        return output
+
+    def read(self, count):
+        output = self.fh.read(count)
+        if self.expected_bytes_left is not None:
+            self.expected_bytes_left -= len(output)
+        return output
+
+    def skip_to_end(self):
+        if self.expected_bytes_left is None:
+            raise Exception('expected_bytes_left is unset, cannot skip to end')
+
+        while self.expected_bytes_left > 0:
+            read_size = min(CHUNK_SIZE, self.expected_bytes_left)
+            buf = self.read(read_size)
+            if len(buf) < read_size:
+                raise Exception('expected {} more bytes but only read {}'.format(self.expected_bytes_left, len(buf)))
+
+
+class GzipRecordFile(RecordFile):
+    """A file like class providing 'readline' over catted gzip'd records"""
+    def __init__(self, fh):
+        RecordFile.__init__(self, fh)
         self.buffer = ""
         self.z = zlib.decompressobj(16+zlib.MAX_WBITS)
         self.done = False
+        self.expected_bytes_left = None
 
 
     def _getline(self):
@@ -200,6 +224,8 @@ class GzipRecordFile(object):
         while True:
             output = self._getline()
             if output:
+                if self.expected_bytes_left is not None:
+                    self.expected_bytes_left -= len(output)
                 return output
 
             if self.done:
@@ -224,6 +250,8 @@ class GzipRecordFile(object):
 
         output = self.buffer[:count]
         self.buffer = self.buffer[count:]
+        if self.expected_bytes_left is not None:
+            self.expected_bytes_left -= len(output)
         return output
 
     def close(self):
