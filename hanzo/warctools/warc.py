@@ -271,7 +271,7 @@ class WarcParser(ArchiveParser):
             # have read blank line following headers
 
             record.content_file = stream
-            record.content_file.bytes_to_eor = content_length + 4   # "\r\n\r\n"
+            record.content_file.bytes_to_eoc = content_length
 
             # check mandatory headers 
             # WARC-Type WARC-Date WARC-Record-ID Content-Length

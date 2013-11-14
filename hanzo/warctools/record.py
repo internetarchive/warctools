@@ -90,7 +90,7 @@ class ArchiveRecord(object):
         if self._content is None:
             content_length = self.get_header(self.CONTENT_LENGTH)
             if content_length is not None:
-                return content_length
+                return int(content_length)
 
         return ArchiveRecord.self.content_length
 

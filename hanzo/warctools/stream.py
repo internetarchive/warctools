@@ -53,9 +53,9 @@ class RecordStream(object):
         self.fh = file_handle
         self.record_parser = record_parser
 
-        # Number of bytes until the end of the record, if known. Normally set
-        # by the record parser based on the Content-Length header.
-        self.bytes_to_eor = None
+        # Number of bytes until the end of the record's content, if known.
+        # Normally set by the record parser based on the Content-Length header.
+        self.bytes_to_eoc = None
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
@@ -87,13 +87,18 @@ class RecordStream(object):
 
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
-        if self.bytes_to_eor is not None:
-            self._skip_to_eor()  # skip to end of previous record
-        self.bytes_to_eor = None
-        offset = self.fh.tell() if offsets else None
-        record, errors, offset = self.record_parser.parse(self, offset)
-        if record is not None:
-            self._current_record_trailer = record.TRAILER
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
+
+        # handle any sort of valid or invalid record terminator
+        while True:
+            offset = self.fh.tell() if offsets else None
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
+                break
+
+        record, errors, offset = self.record_parser.parse(self, offset, line)
         return offset, record, errors
 
     def write(self, record):
@@ -104,12 +109,12 @@ class RecordStream(object):
         """Close the underlying file handle."""
         self.fh.close()
 
-    def _skip_to_eor(self):
-        if self.bytes_to_eor is None:
-            raise Exception('bytes_to_eor is unset, cannot skip to end')
+    def _skip_to_eoc(self):
+        if self.bytes_to_eoc is None:
+            raise Exception('bytes_to_eoc is unset, cannot skip to end')
 
-        while self.bytes_to_eor > 0:
-            read_size = min(CHUNK_SIZE, self.bytes_to_eor)
+        while self.bytes_to_eoc > 0:
+            read_size = min(CHUNK_SIZE, self.bytes_to_eoc)
             buf = self._read(read_size)
             if len(buf) < read_size:
                 raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
@@ -121,21 +126,21 @@ class RecordStream(object):
         else:
             result = self.fh.read()
 
-        if self.bytes_to_eor is not None:
-            self.bytes_to_eor -= len(result)
+        if self.bytes_to_eoc is not None:
+            self.bytes_to_eoc -= len(result)
 
         return result
 
     def read(self, count=None):
         """Safe read for reading content, will not read past the end of the
-        payload, assuming self.bytes_to_eor is set. The record's trailing
+        payload, assuming self.bytes_to_eoc is set. The record's trailing
         bytes, \\r\\n\\r\\n for warcs or \\n for arcs, will remain when this
         method returns "".
         """
-        if self.bytes_to_eor is not None and count is not None:
-            read_size = min(count, max(self.bytes_to_eor - len(self._current_record_trailer), 0))
-        elif self.bytes_to_eor is not None:
-            read_size = max(self.bytes_to_eor - len(self._current_record_trailer), 0)
+        if self.bytes_to_eoc is not None and count is not None:
+            read_size = min(count, max(self.bytes_to_eoc, 0))
+        elif self.bytes_to_eoc is not None:
+            read_size = max(self.bytes_to_eoc, 0)
         elif count is not None:
             read_size = count
         else:
@@ -145,14 +150,14 @@ class RecordStream(object):
 
     def readline(self, maxlen=None):
         """Safe readline for reading content, will not read past the end of the
-        payload, assuming self.bytes_to_eor is set. The record's trailing
-        bytes, \\r\\n\\r\\n for warcs or \\n for arcs, will remain when this
-        method returns "".
+        payload, assuming self.bytes_to_eoc is set. The record's trailing
+        bytes, \\r\\n\\r\\n for valid warcs or \\n for valid arcs, will remain
+        when this method returns "".
         """
-        if self.bytes_to_eor is not None and maxlen is not None:
-            lim = min(maxlen, max(self.bytes_to_eor - len(self._current_record_trailer), 0))
-        elif self.bytes_to_eor is not None:
-            lim = max(self.bytes_to_eor - len(self._current_record_trailer), 0)
+        if self.bytes_to_eoc is not None and maxlen is not None:
+            lim = min(maxlen, max(self.bytes_to_eoc, 0))
+        elif self.bytes_to_eoc is not None:
+            lim = max(self.bytes_to_eoc, 0)
         elif maxlen is not None:
             lim = maxlen
         else:
@@ -163,8 +168,8 @@ class RecordStream(object):
         else:
             result = self.fh.readline()
 
-        if self.bytes_to_eor is not None:
-            self.bytes_to_eor -= len(result)
+        if self.bytes_to_eoc is not None:
+            self.bytes_to_eoc -= len(result)
         return result
 
 CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
@@ -193,17 +198,20 @@ class GzipRecordStream(RecordStream):
         self.raw_fh = file_handle
 
     def _read_record(self, offsets):
-        if self.bytes_to_eor is not None:
-            self._skip_to_eor()  # skip to end of previous record
-        self.bytes_to_eor = None
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
+
+        # handle any sort of valid or invalid record terminator
+        while True:
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
+                break
 
         record, errors, _offset = \
-            self.record_parser.parse(self, offset=None)
+            self.record_parser.parse(self, offset=None, line=line)
 
         offset = self.fh.member_offset
-
-        if record is not None:
-            self._current_record_trailer = record.TRAILER
 
         return offset, record, errors
 
@@ -220,16 +228,18 @@ class GzipFileStream(RecordStream):
 
     def _read_record(self, offsets):
         # no useful offsets in a gzipped file
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
 
-        if self.bytes_to_eor is not None:
-            self._skip_to_eor()  # skip to end of previous record
-        self.bytes_to_eor = None
+        # handle any sort of valid or invalid record terminator
+        while True:
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
+                break
 
         record, errors, _offset = \
-            self.record_parser.parse(self, offset=None)
-
-        if record is not None:
-            self._current_record_trailer = record.TRAILER
+            self.record_parser.parse(self, offset=None, line=line)
 
         return offset, record, errors
 
