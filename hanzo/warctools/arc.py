@@ -149,7 +149,7 @@ class ArcParser(ArchiveParser):
         line = None
 
         record.content_file = stream
-        record.content_file.bytes_to_eor = content_length
+        record.content_file.bytes_to_eoc = content_length
 
         return (record, (), offset)
 
