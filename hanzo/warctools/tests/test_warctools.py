@@ -1,10 +1,10 @@
 # vim: set sw=4 et:
 
 import unittest2
-import StringIO
+from StringIO import StringIO
 import tempfile
 import gzip
-from hanzo import warctools
+from hanzo import warctools, httptools
 
 class ArcRecordTerminatorTest(unittest2.TestCase):
     REC1_CONTENT = (b'1 0 InternetArchive\n'
@@ -38,7 +38,7 @@ class ArcRecordTerminatorTest(unittest2.TestCase):
 
     def _arc(self, terminator):
         s = self.RECORD1 + terminator + self.RECORD2 + terminator
-        f = StringIO.StringIO(s)
+        f = StringIO(s)
         return f
 
     def _test_terminator(self, terminator):
@@ -146,7 +146,7 @@ class WarcRecordTerminatorTest(unittest2.TestCase):
 
     def _warc(self, terminator):
         s = self.RECORD1 + terminator + self.RECORD2 + terminator
-        f = StringIO.StringIO(s)
+        f = StringIO(s)
         return f
 
     def _test_terminator(self, terminator):
@@ -209,6 +209,154 @@ class WarcRecordTerminatorTest(unittest2.TestCase):
         self._test_terminator(b'\r\r\r\r\r\r\n')
         self._test_terminator(b'\r\r\r\r\r\r\n\n')
         self._test_terminator(b'\r\r\r\r\r\r\n\n\n')
+
+
+class WarcWritingTest(unittest2.TestCase):
+
+    # XXX should this a part of the library?
+    def build_warc_record(self, url, warc_date=None, content_buffer=None,
+            content_file=None, content_length=None, concurrent_to=None,
+            warc_type=None, content_type=None, remote_ip=None, profile=None,
+            refers_to=None, refers_to_target_uri=None, refers_to_date=None,
+            record_id=None, block_digest=None, payload_digest=None):
+
+        if warc_date is None:
+            warc_date = warctools.warc.warc_datetime_str(datetime.now())
+
+        if record_id is None:
+            record_id = warctools.WarcRecord.random_warc_uuid()
+
+        headers = []
+        if warc_type is not None:
+            headers.append((warctools.WarcRecord.TYPE, warc_type))
+        headers.append((warctools.WarcRecord.ID, record_id))
+        headers.append((warctools.WarcRecord.DATE, warc_date))
+        headers.append((warctools.WarcRecord.URL, url))
+        if remote_ip is not None:
+            headers.append((warctools.WarcRecord.IP_ADDRESS, remote_ip))
+        if profile is not None:
+            headers.append((warctools.WarcRecord.PROFILE, profile))
+        if refers_to is not None:
+            headers.append((warctools.WarcRecord.REFERS_TO, refers_to))
+        if refers_to_target_uri is not None:
+            headers.append((warctools.WarcRecord.REFERS_TO_TARGET_URI, refers_to_target_uri))
+        if refers_to_date is not None:
+            headers.append((warctools.WarcRecord.REFERS_TO_DATE, refers_to_date))
+        if concurrent_to is not None:
+            headers.append((warctools.WarcRecord.CONCURRENT_TO, concurrent_to))
+        if content_type is not None:
+            headers.append((warctools.WarcRecord.CONTENT_TYPE, content_type))
+        if content_length is not None:
+            headers.append((warctools.WarcRecord.CONTENT_LENGTH, content_length))
+        if block_digest is not None:
+            headers.append((warctools.WarcRecord.BLOCK_DIGEST, block_digest))
+        if payload_digest is not None:
+            headers.append((warctools.WarcRecord.BLOCK_DIGEST, payload_digest))
+
+        if content_file is not None:
+            assert content_buffer is None
+            assert content_length is not None
+            record = warctools.WarcRecord(headers=headers, content_file=content_file)
+        else:
+            assert content_buffer is not None
+            content_tuple = (content_type, content_buffer)
+            record = warctools.WarcRecord(headers=headers, content=content_tuple)
+
+        return record
+
+    def build_record_using_tuple(self):
+        content_buffer = 'Luke, I am your payload'
+        record = self.build_warc_record(url='http://example.org/',
+                content_buffer=content_buffer,
+                record_id='<urn:uuid:00000000-0000-0000-0000-000000000000>',
+                warc_date='2013-11-15T00:00:00Z',
+                warc_type=warctools.WarcRecord.RESPONSE,
+                content_type=httptools.RequestMessage.CONTENT_TYPE)
+        return record
+
+    def build_record_using_stream(self):
+        content_buffer = 'Shmuke, I gam four snayglob'
+        fh = StringIO(content_buffer)
+        record = self.build_warc_record(url='http://example.org/',
+                content_file=fh, content_length=str(len(content_buffer)),
+                record_id='<urn:uuid:00000000-0000-0000-0000-000000000000>',
+                warc_date='2013-11-15T00:00:00Z',
+                warc_type=warctools.WarcRecord.RESPONSE,
+                content_type=httptools.RequestMessage.CONTENT_TYPE)
+        return record
+
+
+    def test_write_using_tuple(self):
+        record = self.build_record_using_tuple()
+
+        f = StringIO()
+        record.write_to(f)
+        self.assertEqual(f.getvalue(), 
+                'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        f.close()
+
+        # should work again if we do it again
+        f = StringIO()
+        record.write_to(f)
+        self.assertEqual(f.getvalue(), 
+                'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        f.close()
+
+
+    def test_write_using_tuple_gz(self):
+        record = self.build_record_using_tuple()
+
+        f = StringIO()
+        record.write_to(f, gzip=True)
+        f.seek(0)
+        g = gzip.GzipFile(fileobj=f, mode='rb')
+        self.assertEqual(g.read(), 'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        g.close()
+        f.close()
+
+        # should work again if we do it again
+        f = StringIO()
+        record.write_to(f, gzip=True)
+        f.seek(0)
+        g = gzip.GzipFile(fileobj=f, mode='rb')
+        self.assertEqual(g.read(), 'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        g.close()
+        f.close()
+
+
+    def test_write_using_stream(self):
+        record = self.build_record_using_stream()
+
+        f = StringIO()
+        record.write_to(f)
+        self.assertEqual(f.getvalue(), 
+                'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 27\r\n\r\nShmuke, I gam four snayglob\r\n\r\n')
+        f.close()
+
+        # throws exception because record.content_file position has advanced
+        f = StringIO()
+        with self.assertRaises(Exception):
+            record.write_to(f)
+        f.close()
+
+
+    def test_write_using_stream_gz(self):
+        record = self.build_record_using_stream()
+
+        f = StringIO()
+        record.write_to(f, gzip=True)
+        f.seek(0)
+        g = gzip.GzipFile(fileobj=f, mode='rb')
+        self.assertEqual(g.read(), 'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 27\r\n\r\nShmuke, I gam four snayglob\r\n\r\n')
+        g.close()
+        f.close()
+
+        # throws exception because record.content_file position has advanced
+        f = StringIO()
+        with self.assertRaises(Exception):
+            record.write_to(f, gzip=True)
+        f.close()
+
 
 if __name__ == '__main__':
     unittest2.main()

@@ -59,7 +59,37 @@ class ArchiveRecord(object):
         return self.content[0]
 
     @property
+    def content_file(self):
+        """
+        File handle for streaming the payload.
+
+        If the record has been read from a RecordStream, content_file wraps the
+        same underlying file handle as the RecordStream itself. This has
+        important implications. Results are undefined if you try to read from
+        content_file after reading the next record from RecordStream; and
+        closing content_file will close the RecordStream, and vice versa.
+        But if you avoid these caveats, content_file takes care to bound itself
+        within the content-length specified in the warc record, so that reading
+        to the end of content_file will bring you only to the end of the
+        record's payload.
+
+        When creating a record for writing and supplying content_file, the
+        record can only be written once, since writing the record entails
+        reading content_file and advancing the file position. Subsequent
+        attempts to write using content_file will throw an exception.
+        """
+        return self._content_file
+
+    @content_file.setter
+    def content_file(self, fh):
+        self._content_file = fh
+        self._content_file_valid = fh is not None
+
+    @property
     def content(self):
+        """A tuple (content_type, content). When first referenced, content[0]
+        is populated from the Content-Type header, and content[1] by reading
+        self.content_file."""
         if self._content is None:
             content_type = self.get_header(self.CONTENT_TYPE)
             try:
@@ -134,12 +164,24 @@ class ArchiveRecord(object):
                 print '\t', e
 
     def write_to(self, out, newline='\x0D\x0A', gzip=False):
+        if self.content_file is not None:
+            if not self._content_file_valid:
+                raise Exception('cannot write record because content_file has already been used')
+
         if gzip:
-            out = GzipFile(fileobj=out)
+            if hasattr(out, 'mode'):
+                out = GzipFile(fileobj=out)
+            else:
+                out = GzipFile(fileobj=out, mode='ab')
+
         self._write_to(out, newline)
+
         if gzip:
             out.flush()
             out.close()
+
+        if self.content_file is not None:
+            self._content_file_valid = False
 
     def _write_to(self, out, newline):
         raise AssertionError('this is bad')

@@ -52,16 +52,19 @@ class WarcRecord(ArchiveRecord):
 
     def __init__(self, version=VERSION, headers=None, content=None,
                  errors=None, content_file=None):
-        """When writing, either content or content_file must be provided, but
-        not both. If content_file is provided, the supplied headers should
-        include Content-Type and Content-Length. If content, which is a tuple
-        (content_type, content_buffer), is provided, any Content-Type and
-        Content-Length that appear in the supplied headers are ignored, and the
-        values content[0] and len(content[1]), respectively, are used. When
-        reading, the caller can stream content_file or use content, which is
-        lazily filled using content_file, and after which content_file is
-        unavailable. """
+        """
+        WarcRecord constructor.
 
+        Either content or content_file must be provided, but not both. If
+        content, which is a tuple (content_type, content_buffer), is provided,
+        when writing the warc record, any Content-Type and Content-Length that
+        appear in the supplied headers are ignored, and the values content[0]
+        and len(content[1]), respectively, are used. 
+
+        When reading, the caller can stream content_file or use content, which is
+        lazily filled using content_file, and after which content_file is
+        unavailable.
+        """
         ArchiveRecord.__init__(self, headers, content, errors)
         self.version = version
         self.content_file = content_file
@@ -83,16 +86,22 @@ class WarcRecord(ArchiveRecord):
         out.write(self.version)
         out.write(nl)
         for k, v in self.headers:
-            if self._content is None or k not in (self.CONTENT_TYPE, self.CONTENT_LENGTH):
+            if self.content_file is not None or k not in (self.CONTENT_TYPE, self.CONTENT_LENGTH):
                 out.write(k)
                 out.write(": ")
                 out.write(v)
                 out.write(nl)
 
-        # if content tuple is provided we set Content-Type and Content-Length
-        # based on the values in the tuple
-        if self._content is not None:
-            content_type, content_buffer = self._content
+        if self.content_file is not None:
+            out.write(nl) # end of header blank nl
+            while True:
+                buf = self.content_file.read(8192)
+                if buf == '': break
+                out.write(buf)
+        else:
+            # if content tuple is provided, set Content-Type and
+            # Content-Length based on the values in the tuple
+            content_type, content_buffer = self.content
             content_buffer = buffer(content_buffer)
             if content_type:
                 out.write(self.CONTENT_TYPE)
@@ -111,13 +120,6 @@ class WarcRecord(ArchiveRecord):
             out.write(nl) # end of header blank nl
             if content_buffer:
                 out.write(content_buffer[:content_length])
-        else:
-            # content_file provided
-            out.write(nl) # end of header blank nl
-            buf = self.content_file.read(65536)
-            while buf != '':
-                out.write(buf)
-                buf = self.content_file.read(65536)
      
         # end of record nl nl
         out.write(nl)

@@ -138,9 +138,9 @@ class RecordStream(object):
         method returns "".
         """
         if self.bytes_to_eoc is not None and count is not None:
-            read_size = min(count, max(self.bytes_to_eoc, 0))
+            read_size = min(count, self.bytes_to_eoc)
         elif self.bytes_to_eoc is not None:
-            read_size = max(self.bytes_to_eoc, 0)
+            read_size = self.bytes_to_eoc
         elif count is not None:
             read_size = count
         else:
@@ -155,9 +155,9 @@ class RecordStream(object):
         when this method returns "".
         """
         if self.bytes_to_eoc is not None and maxlen is not None:
-            lim = min(maxlen, max(self.bytes_to_eoc, 0))
+            lim = min(maxlen, self.bytes_to_eoc)
         elif self.bytes_to_eoc is not None:
-            lim = max(self.bytes_to_eoc, 0)
+            lim = self.bytes_to_eoc
         elif maxlen is not None:
             lim = maxlen
         else:
