@@ -18,9 +18,7 @@ setup(name='warctools',
     packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
 #    namespace_packages=["hanzo"],
     test_loader="unittest2:TestLoader",
-    # see http://www.scotttorborg.com/python-packaging/testing.html
-    test_suite="nose.collector",
-    tests_require=["nose"],
+    test_suite="unittest2.collector",
     entry_points="""
         [console_scripts]
         warcdump=hanzo.warcdump:run
