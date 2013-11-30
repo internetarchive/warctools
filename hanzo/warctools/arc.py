@@ -1,4 +1,6 @@
-"""An object to represent arc records"""
+"""An object to represent arc records
+http://archive.org/web/researcher/ArcFileFormat.php
+"""
 
 import re
 
@@ -10,25 +12,28 @@ from hanzo.warctools.archive_detect import register_record_type
 #Archive-length<nl> 
 # 
 @ArchiveRecord.HEADERS(
-    URL = 'URL',
-    IP = 'IP-address',
-    DATE = 'Archive-date',
-    CONTENT_TYPE = 'Content-type',
-    CONTENT_LENGTH = 'Archive-length',
-    RESULT_CODE = 'Result-code',
-    CHECKSUM = 'Checksum',
-    LOCATION = 'Location',
-    OFFSET = 'Offset',
-    FILENAME = 'Filename',
+    URL = b'URL',
+    IP = b'IP-address',
+    DATE = b'Archive-date',
+    CONTENT_TYPE = b'Content-type',
+    CONTENT_LENGTH = b'Archive-length',
+    RESULT_CODE = b'Result-code',
+    CHECKSUM = b'Checksum',
+    LOCATION = b'Location',
+    OFFSET = b'Offset',
+    FILENAME = b'Filename',
 )
 class ArcRecord(ArchiveRecord):
+
+    TRAILER = b'\n'  # an ARC record is trailed by single unix newline
+
     """Represents a record in an arc file."""
     def __init__(self, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self, headers, content, errors) 
 
     @property
     def type(self):
-        return "response"
+        return b"response"
 
     def _write_to(self, out, nl):
         #TODO: empty method?
@@ -49,7 +54,7 @@ class ArcRecordHeader(ArcRecord):
 
     @property
     def type(self):
-        return "filedesc"
+        return b"filedesc"
 
     def raw(self):
         """Return the raw representation of this record."""
@@ -61,9 +66,9 @@ def rx(pat):
     return re.compile(pat, flags=re.IGNORECASE)
 
 nl_rx = rx('^\r\n|\r|\n$')
-length_rx = rx('^%s$' % ArcRecord.CONTENT_LENGTH) #pylint: disable-msg=E1101
-type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
-SPLIT = re.compile(r'\b\s|\s\b').split
+length_rx = rx(b'^' + ArcRecord.CONTENT_LENGTH + b'$') #pylint: disable-msg=E1101
+type_rx = rx(b'^' + ArcRecord.CONTENT_TYPE + b'$')     #pylint: disable-msg=E1101
+SPLIT = re.compile(br'\b\s|\s\b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
@@ -80,7 +85,6 @@ class ArcParser(ArchiveParser):
         # if we don't know 
 
         self.headers = []
-        self.trailing_newlines = 0
 
     def parse(self, stream, offset, line=None):
         """Parses a stream as an arc archive and returns an Arc record along
@@ -94,10 +98,9 @@ class ArcParser(ArchiveParser):
         while not line.rstrip():
             if not line:
                 return (None, (), offset)
-            self.trailing_newlines -= 1
             line = stream.readline()
 
-        if line.startswith('filedesc:'):
+        if line.startswith(b'filedesc:'):
             raw_headers = []
             raw_headers.append(line)
             # read headers named in body of record
@@ -145,25 +148,8 @@ class ArcParser(ArchiveParser):
 
         line = None
 
-        if content_length:
-            content = []
-            length = 0
-            while length < content_length:
-                line = stream.readline()
-                if not line:
-                    # print 'no more data' 
-                    break
-                content.append(line)
-                length += len(line)
-            content = "".join(content)
-            content, line = \
-                content[0:content_length], content[content_length+1:]
-            record.content = (content_type, content)
-
-        if line:
-            record.error('trailing data at end of record', line)
-        if  line == '':
-            self.trailing_newlines = 1
+        record.content_file = stream
+        record.content_file.bytes_to_eoc = content_length
 
         return (record, (), offset)
 
@@ -172,7 +158,7 @@ class ArcParser(ArchiveParser):
 
     def parse_header_list(self, line):
         # some people use ' ' as the empty value. lovely.
-        line = line.rstrip('\r\n')
+        line = line.rstrip(b'\r\n')
         values = SPLIT(line)
         if len(self.headers) != len(values):
             if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
@@ -208,4 +194,4 @@ class ArcParser(ArchiveParser):
         return content_type, content_length, errors
 
 
-register_record_type(re.compile('^filedesc://'), ArcRecord)
+register_record_type(re.compile(br'^filedesc://'), ArcRecord)

@@ -4,15 +4,15 @@ http://tools.ietf.org/html/draft-ietf-httpbis-p2-semantics-17
 """
 
 class Methods(object):
-    GET = 'GET'
-    PUT = 'PUT'
-    HEAD = 'HEAD'
-    DELETE = 'DELETE'
-    POST = 'POST'
-    OPTIONS = 'OPTIONS'
-    TRACE = 'TRACE'
-    PATCH = 'PATCH'
-    CONNECT = 'CONNECT'
+    GET = b'GET'
+    PUT = b'PUT'
+    HEAD = b'HEAD'
+    DELETE = b'DELETE'
+    POST = b'POST'
+    OPTIONS = b'OPTIONS'
+    TRACE = b'TRACE'
+    PATCH = b'PATCH'
+    CONNECT = b'CONNECT'
     safe = (GET, HEAD, OPTIONS, TRACE,)
     idempotent = (PUT, DELETE,)
     no_body = (HEAD,)

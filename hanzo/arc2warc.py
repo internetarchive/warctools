@@ -86,10 +86,11 @@ class ArcTransformer(object):
         inforecord = WarcRecord(headers=warcinfo_headers, content=warcinfo_content, version=self.version)
 
         if record.date:
-            try:
-                warcmeta_date = datetime.datetime.strptime(record.date,'%Y%m%d%H%M%S')
-            except ValueError:
-                warcmeta_date = datetime.datetime.strptime(record.date,'%Y%m%d')
+            if len(record.date) >= 14:
+                warcmeta_date = datetime.datetime.strptime(record.date[:14],'%Y%m%d%H%M%S')
+            else:
+                warcmeta_date = datetime.datetime.strptime(record.date[:8],'%Y%m%d')
+
             warcmeta_date = warc_datetime_str(warcmeta_date)
         else:
             warcmeta_date = warcinfo_date

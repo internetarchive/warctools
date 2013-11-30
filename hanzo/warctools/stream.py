@@ -1,13 +1,12 @@
 """Read records from normal file and compressed file"""
 
-import zlib
 import gzip
 import re
 
 from hanzo.warctools.archive_detect import is_gzip_file, guess_record_type
 
 def open_record_stream(record_class=None, filename=None, file_handle=None,
-                       mode="rb+", gzip="auto", offset=None, length=None):
+                       mode="rb", gzip="auto", offset=None, length=None):
     """Can take a filename or a file_handle. Normally called
     indirectly from A record class i.e WarcRecord.open_archive. If the
     first parameter is None, will try to guess"""
@@ -53,7 +52,10 @@ class RecordStream(object):
     def __init__(self, file_handle, record_parser):
         self.fh = file_handle
         self.record_parser = record_parser
-        self._parser = None
+
+        # Number of bytes until the end of the record's content, if known.
+        # Normally set by the record parser based on the Content-Length header.
+        self.bytes_to_eoc = None
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
@@ -64,7 +66,6 @@ class RecordStream(object):
         Offset is either a number or None.
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
-
         nrecords = 0
         while limit is None or nrecords < limit:
             offset, record, errors = self._read_record(offsets)
@@ -86,8 +87,18 @@ class RecordStream(object):
 
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
-        offset = self.fh.tell() if offsets else None
-        record, errors, offset = self.record_parser.parse(self.fh, offset)
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
+
+        # handle any sort of valid or invalid record terminator
+        while True:
+            offset = self.fh.tell() if offsets else None
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
+                break
+
+        record, errors, offset = self.record_parser.parse(self, offset, line)
         return offset, record, errors
 
     def write(self, record):
@@ -98,34 +109,123 @@ class RecordStream(object):
         """Close the underlying file handle."""
         self.fh.close()
 
+    def _skip_to_eoc(self):
+        if self.bytes_to_eoc is None:
+            raise Exception('bytes_to_eoc is unset, cannot skip to end')
+
+        while self.bytes_to_eoc > 0:
+            read_size = min(CHUNK_SIZE, self.bytes_to_eoc)
+            buf = self._read(read_size)
+            if len(buf) < read_size:
+                raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
+
+    def _read(self, count=None):
+        """Raw read, will read into next record if caller isn't careful"""
+        if count is not None:
+            result = self.fh.read(count)
+        else:
+            result = self.fh.read()
+
+        if self.bytes_to_eoc is not None:
+            self.bytes_to_eoc -= len(result)
+
+        return result
+
+    def read(self, count=None):
+        """Safe read for reading content, will not read past the end of the
+        payload, assuming self.bytes_to_eoc is set. The record's trailing
+        bytes, \\r\\n\\r\\n for warcs or \\n for arcs, will remain when this
+        method returns "".
+        """
+        if self.bytes_to_eoc is not None and count is not None:
+            read_size = min(count, self.bytes_to_eoc)
+        elif self.bytes_to_eoc is not None:
+            read_size = self.bytes_to_eoc
+        elif count is not None:
+            read_size = count
+        else:
+            read_size = None
+
+        return self._read(read_size)
+
+    def readline(self, maxlen=None):
+        """Safe readline for reading content, will not read past the end of the
+        payload, assuming self.bytes_to_eoc is set. The record's trailing
+        bytes, \\r\\n\\r\\n for valid warcs or \\n for valid arcs, will remain
+        when this method returns "".
+        """
+        if self.bytes_to_eoc is not None and maxlen is not None:
+            lim = min(maxlen, self.bytes_to_eoc)
+        elif self.bytes_to_eoc is not None:
+            lim = self.bytes_to_eoc
+        elif maxlen is not None:
+            lim = maxlen
+        else:
+            lim = None
+
+        if lim is not None:
+            result = self.fh.readline(lim)
+        else:
+            result = self.fh.readline()
+
+        if self.bytes_to_eoc is not None:
+            self.bytes_to_eoc -= len(result)
+        return result
+
+CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
+
+class GeeZipFile(gzip.GzipFile):
+    """Extends gzip.GzipFile to remember self.member_offset, the raw file
+    offset of the current gzip member."""
+
+    def __init__(self, filename=None, mode=None,
+                 compresslevel=9, fileobj=None, mtime=None):
+        gzip.GzipFile.__init__(self, filename, mode, compresslevel, fileobj, mtime)
+        self.member_offset = None
+
+    # hook in to the place we seem to be able to reliably get the raw gzip
+    # member offset
+    def _read(self, size=1024):
+        if self._new_member:
+            try:
+                # works for python3.2
+                self.member_offset = self.fileobj.tell() - self.fileobj._length + (self.fileobj._read or 0)
+            except AttributeError:
+                # works for python2.7
+                self.member_offset = self.fileobj.tell()
+
+        return gzip.GzipFile._read(self, size)
+
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped
     archive records"""
     def __init__(self, file_handle, record_parser):
-        RecordStream.__init__(self, file_handle, record_parser)
-        self.gz = None
+        RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
+        self.raw_fh = file_handle
 
     def _read_record(self, offsets):
-        errors = []
-        if self.gz is not None:
-            # we have an open record, so try for a record at the end
-            # at best will read trailing newlines at end of last record
-            record, r_errors, _offset = \
-                self.record_parser.parse(self.gz, offset=None)
-            if record:
-                record.error('multiple warc records in gzip record file')
-                return None, record, errors
-            self.gz.close()
-            errors.extend(r_errors)
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
 
+        # handle any sort of valid or invalid record terminator
+        while True:
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
+                break
 
-        offset = self.fh.tell() if offsets else None
-        self.gz = GzipRecordFile(self.fh)
-        record, r_errors, _offset = \
-            self.record_parser.parse(self.gz, offset=None)
-        errors.extend(r_errors)
+        record, errors, _offset = \
+            self.record_parser.parse(self, offset=None, line=line)
+
+        offset = self.fh.member_offset
+
         return offset, record, errors
 
+    def seek(self, offset, pos=0):
+        """Same as a seek on a file"""
+        self.raw_fh.seek(offset, pos)
+        # trick to avoid closing and recreating GzipFile, does it always work?
+        self.fh._new_member = True
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
@@ -133,99 +233,19 @@ class GzipFileStream(RecordStream):
         RecordStream.__init__(self, gzip.GzipFile(fileobj=file_handle), record)
 
     def _read_record(self, offsets):
-        # no real offsets in a gzipped file (no seperate records)
-        return RecordStream._read_record(self, False)
+        # no useful offsets in a gzipped file
+        if self.bytes_to_eoc is not None:
+            self._skip_to_eoc()  # skip to end of previous record
+        self.bytes_to_eoc = None
 
-### record-gzip handler, based on zlib
-### implements readline() access over a a single
-### gzip-record. must be re-created to read another record
-
-
-CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
-line_rx = re.compile(b'^(?P<line>^[^\r\n]*(?:\r\n|\r(?!\n)|\n))(?P<tail>.*)$',
-                     re.DOTALL)
-
-class GzipRecordFile(object):
-    """A file like class providing 'readline' over catted gzip'd records"""
-    def __init__(self, fh):
-        self.fh = fh
-        self.buffer = b""
-        self.z = zlib.decompressobj(16+zlib.MAX_WBITS)
-        self.done = False
-
-
-    def _getline(self):
-        if self.buffer:
-            #a,nl,b
-            match = line_rx.match(self.buffer)
-            #print match
-            # print 'split:', split[0],split[1], len(split[2])
-            if match:
-                output = match.group('line')
-
-                self.buffer = b""+match.group('tail')
-                return output
-
-            elif self.done:
-                output = self.buffer
-                self.buffer = ""
-
-                return output
-
-    def _read_chunk(self):
-        chunk = self.fh.read(CHUNK_SIZE)
-        out = self.z.decompress(chunk)
-
-        # if we hit a \r on reading a chunk boundary, read a little more
-        # in case there is a following \n
-        while out.endswith(b'\r') and not self.z.unused_data:
-            chunk = self.fh.read(CHUNK_SIZE)
-            if not chunk:
-                break
-            tail = self.z.decompress(chunk)
-            if tail:
-                out += tail
-                break
-
-        if self.z.unused_data:
-            self.fh.seek(-len(self.z.unused_data), 1)
-            self.done = True
-
-        if not chunk:
-            self.done = True
-
-        return out
-
-    def readline(self):
+        # handle any sort of valid or invalid record terminator
         while True:
-            output = self._getline()
-            if output:
-                return output
-
-            if self.done:
-                return ""
-
-            chunk = self._read_chunk()
-            if chunk:
-                self.buffer += chunk
-
-    def read(self, count):
-        """Reads `count` bytes from the stream. The output will be truncated if
-        there are less than `count` bytes remaining in the stream."""
-        length = len(self.buffer)
-        chunks = []
-        while not self.done and length < count:
-            chunk = self._read_chunk()
-            if not chunk:
+            line = self.fh.readline()
+            if not re.match(br'^[\r\n]+$', line):
                 break
-            length += len(chunk)
-            chunks.append(chunk)
-        self.buffer += b"".join(chunks)
 
-        output = self.buffer[:count]
-        self.buffer = self.buffer[count:]
-        return output
+        record, errors, _offset = \
+            self.record_parser.parse(self, offset=None, line=line)
 
-    def close(self):
-        if self.z:
-            self.z.flush()
+        return offset, record, errors
+

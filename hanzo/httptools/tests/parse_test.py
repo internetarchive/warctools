@@ -1,37 +1,38 @@
 """Tests for http parsing."""
-import unittest2
+import unittest
 
 from hanzo.httptools.messaging import \
     RequestMessage, \
     ResponseMessage
 
 get_request_lines = [
-        "GET / HTTP/1.1",
-        "Host: example.org",
-        "",
-        "",
+        b"GET / HTTP/1.1",
+        b"Host: example.org",
+        b"",
+        b"",
         ]
-get_request = "\r\n".join(get_request_lines)
+get_request = b"\r\n".join(get_request_lines)
 get_response_lines = [
-        "HTTP/1.1 200 OK",
-        "Host: example.org",
-        "Content-Length: 5",
-        "",
-        "tests",
+        b"HTTP/1.1 200 OK",
+        b"Host: example.org",
+        b"Content-Length: 5",
+        b"",
+        b"tests",
         ]
-get_response = "\r\n".join(get_response_lines)
+get_response = b"\r\n".join(get_response_lines)
 
 
-class GetChar(unittest2.TestCase):
-    """Test basic GET request parsing. Single character at a time."""
+class GetChar(unittest.TestCase):
+    """Test basic GET request parsing. Single byte at a time."""
 
     def runTest(self):
         """Attempts to parse the contents of get_request and
         get_response."""
         p = RequestMessage()
         for t in get_request:
+            if isinstance(t, int): t = bytes([t]) # python3
             text = p.feed(t)
-            self.assertEqual(text, '')
+            self.assertEqual(text, b'')
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
@@ -40,16 +41,17 @@ class GetChar(unittest2.TestCase):
 
         p = ResponseMessage(p)
         for char in get_response:
+            if isinstance(char, int): char = bytes([char]) # python3
             text = p.feed(char)
-            self.assertEqual(text, '')
+            self.assertEqual(text, b'')
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
         self.assertEqual(get_response, p.get_decoded_message())
-        self.assertEqual("tests", p.get_body())
+        self.assertEqual(b"tests", p.get_body())
 
 
-class GetLines(unittest2.TestCase):
+class GetLines(unittest.TestCase):
     """Test basic GET request parsing. Single line at a time."""
 
     def runTest(self):
@@ -59,11 +61,11 @@ class GetLines(unittest2.TestCase):
         p = RequestMessage()
         for line in get_request_lines[:-1]:
             text = p.feed(line)
-            self.assertEqual(text, "")
-            text = p.feed("\r\n")
-            self.assertEqual(text, "")
+            self.assertEqual(text, b"")
+            text = p.feed(b"\r\n")
+            self.assertEqual(text, b"")
         text = p.feed(get_request_lines[-1])
-        self.assertEqual(text, "")
+        self.assertEqual(text, b"")
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
@@ -73,12 +75,12 @@ class GetLines(unittest2.TestCase):
         p = ResponseMessage(p)
         for line in get_response_lines[:-1]:
             text = p.feed(line)
-            self.assertEqual(text, "")
-            text = p.feed("\r\n")
-            self.assertEqual(text, "")
+            self.assertEqual(text, b"")
+            text = p.feed(b"\r\n")
+            self.assertEqual(text, b"")
         text = p.feed(get_response_lines[-1])
 
-        self.assertEqual(text, "")
+        self.assertEqual(text, b"")
 
         self.assertTrue(p.headers_complete())
         self.assertTrue(p.complete())
@@ -86,26 +88,26 @@ class GetLines(unittest2.TestCase):
         self.assertEqual(get_response, p.get_decoded_message())
 
         self.assertEqual(p.code, 200)
-        self.assertEqual(p.header.version, "HTTP/1.1")
-        self.assertEqual(p.header.phrase, "OK")
+        self.assertEqual(p.header.version, b"HTTP/1.1")
+        self.assertEqual(p.header.phrase, b"OK")
 
 
-head_request = "\r\n".join([
-    "HEAD / HTTP/1.1",
-    "Host: example.org",
-    "",
-    "",
+head_request = b"\r\n".join([
+    b"HEAD / HTTP/1.1",
+    b"Host: example.org",
+    b"",
+    b"",
 ])
-head_response = "\r\n".join([
-    "HTTP/1.1 200 OK",
-    "Host: example.org",
-    "Content-Length: 5",
-    "",
-    "",
+head_response = b"\r\n".join([
+    b"HTTP/1.1 200 OK",
+    b"Host: example.org",
+    b"Content-Length: 5",
+    b"",
+    b"",
 ])
 
 
-class HeadTest(unittest2.TestCase):
+class HeadTest(unittest.TestCase):
     """Tests parsing of HEAD requests and responses."""
 
     def runTest(self):
@@ -114,42 +116,42 @@ class HeadTest(unittest2.TestCase):
         p = RequestMessage()
         text = p.feed(head_request)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
         self.assertEqual(head_request, p.get_decoded_message())
 
         p = ResponseMessage(p)
         text = p.feed(head_response)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
         self.assertEqual(head_response, p.get_decoded_message())
         self.assertEqual(p.code, 200)
-        self.assertEqual(p.header.version, "HTTP/1.1")
-        self.assertEqual(p.header.phrase, "OK")
+        self.assertEqual(p.header.version, b"HTTP/1.1")
+        self.assertEqual(p.header.phrase, b"OK")
 
 
-class PostTestChunked(unittest2.TestCase):
+class PostTestChunked(unittest.TestCase):
     """Tests the parser with a POST request with chunked encoding."""
-    post_request = "\r\n".join([
-            "POST / HTTP/1.1",
-            "Host: example.org",
-            "Transfer-Encoding: chunked",
-            "",
-            "8",
-            "abcdefgh",
-            "0",
-            "",
-            "",
+    post_request = b"\r\n".join([
+            b"POST / HTTP/1.1",
+            b"Host: example.org",
+            b"Transfer-Encoding: chunked",
+            b"",
+            b"8",
+            b"abcdefgh",
+            b"0",
+            b"",
+            b"",
             ])
-    post_response = "\r\n".join([
-            "HTTP/1.1 100 Continue",
-            "Host: example.org",
-            "",
-            "HTTP/1.0 204 No Content",
-            "Date: now!",
-            "",
-            "",
+    post_response = b"\r\n".join([
+            b"HTTP/1.1 100 Continue",
+            b"Host: example.org",
+            b"",
+            b"HTTP/1.0 204 No Content",
+            b"Date: now!",
+            b"",
+            b"",
             ])
 
     def runTest(self):
@@ -157,39 +159,39 @@ class PostTestChunked(unittest2.TestCase):
         p = RequestMessage()
         text = p.feed(self.post_request)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
 
         p = ResponseMessage(p)
         text = p.feed(self.post_response)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
         self.assertEqual(p.code, 204)
-        self.assertEqual(p.header.version, "HTTP/1.0")
-        self.assertEqual(p.header.phrase, "No Content")
+        self.assertEqual(p.header.version, b"HTTP/1.0")
+        self.assertEqual(p.header.phrase, b"No Content")
 
 
-class PostTestChunkedEmpty(unittest2.TestCase):
+class PostTestChunkedEmpty(unittest.TestCase):
     """Tests the parser with a POST request with chunked encoding and
     an empty body."""
-    post_request = "\r\n".join([
-            "POST / HTTP/1.1",
-            "Host: example.org",
-            "Transfer-Encoding: chunked",
-            "",
-            "0",
-            "",
-            "",
+    post_request = b"\r\n".join([
+            b"POST / HTTP/1.1",
+            b"Host: example.org",
+            b"Transfer-Encoding: chunked",
+            b"",
+            b"0",
+            b"",
+            b"",
             ])
-    post_response = "\r\n".join([
-            "HTTP/1.1 100 Continue",
-            "Host: example.org",
-            "",
-            "HTTP/1.0 204 No Content",
-            "Date: now!",
-            "",
-            "",
+    post_response = b"\r\n".join([
+            b"HTTP/1.1 100 Continue",
+            b"Host: example.org",
+            b"",
+            b"HTTP/1.0 204 No Content",
+            b"Date: now!",
+            b"",
+            b"",
             ])
 
     def runTest(self):
@@ -197,45 +199,45 @@ class PostTestChunkedEmpty(unittest2.TestCase):
         p = RequestMessage()
         text = p.feed(self.post_request)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
 
         p = ResponseMessage(p)
         text = p.feed(self.post_response)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
         self.assertEqual(p.code, 204)
-        self.assertEqual(p.header.version, "HTTP/1.0")
-        self.assertEqual(p.header.phrase, "No Content")
+        self.assertEqual(p.header.version, b"HTTP/1.0")
+        self.assertEqual(p.header.phrase, b"No Content")
 
 
-class TestTwoPartStatus(unittest2.TestCase):
+class TestTwoPartStatus(unittest.TestCase):
     """This is a request taken from the wild that broke the crawler. The main
     part being tested is the status line without a message."""
 
-    request = "\r\n".join([
-            "GET / HTTP/1.1",
-            "Host: example.org", # Name changed to protect the guilty
-            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3",
-            "Accept-Encoding: gzip,deflate,sdch",
-            "Accept-Language: en-US,en;q=0.8",
-            "Connection: keep-alive",
-            "Host: example.org",
-            "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7",
-            "",
-            "",
+    request = b"\r\n".join([
+            b"GET / HTTP/1.1",
+            b"Host: example.org", # Name changed to protect the guilty
+            b"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            b"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3",
+            b"Accept-Encoding: gzip,deflate,sdch",
+            b"Accept-Language: en-US,en;q=0.8",
+            b"Connection: keep-alive",
+            b"Host: example.org",
+            b"User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.77 Safari/535.7",
+            b"",
+            b"",
             ])
-    response = "\r\n".join([
-            "HTTP/1.1 404",
-            "Cache-Control: no-cache",
-            "Content-Length: 0",
-            "Content-Type:image/gif",
-            "Pragma:no-cache",
-            "nnCoection: close",
-            "",
-            "",
+    response = b"\r\n".join([
+            b"HTTP/1.1 404",
+            b"Cache-Control: no-cache",
+            b"Content-Length: 0",
+            b"Content-Type:image/gif",
+            b"Pragma:no-cache",
+            b"nnCoection: close",
+            b"",
+            b"",
             ])
 
     def runTest(self):
@@ -243,16 +245,16 @@ class TestTwoPartStatus(unittest2.TestCase):
         p = RequestMessage()
         text = p.feed(self.request)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
 
         p = ResponseMessage(p)
         text = p.feed(self.response)
 
-        self.assertEqual(text, '')
+        self.assertEqual(text, b'')
         self.assertTrue(p.complete())
         self.assertEqual(p.code, 404)
-        self.assertEqual(p.header.version, "HTTP/1.1")
+        self.assertEqual(p.header.version, b"HTTP/1.1")
 
 if __name__ == '__main__':
-    unittest2.main()
+    unittest.main()

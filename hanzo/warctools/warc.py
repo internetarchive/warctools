@@ -5,23 +5,28 @@ import re
 import hashlib
 from hanzo.warctools.record import ArchiveRecord, ArchiveParser
 from hanzo.warctools.archive_detect import register_record_type
+import uuid
 
 bad_lines = 5 # when to give up looking for the version stamp
 
 
 @ArchiveRecord.HEADERS(
-    DATE = b'WARC-Date',
-    TYPE = b'WARC-Type',
-    ID = b'WARC-Record-ID',
-    CONCURRENT_TO = b'WARC-Concurrent-To',
-    REFERS_TO = b'WARC-Refers-To',
-    CONTENT_LENGTH = b'Content-Length',
-    CONTENT_TYPE = b'Content-Type',
-    URL = b'WARC-Target-URI',
-    BLOCK_DIGEST = b'WARC-Block-Digest',
-    IP_ADDRESS = b'WARC-IP-Address',
-    FILENAME = b'WARC-Filename',
-    WARCINFO_ID = b'WARC-Warcinfo-ID',
+    DATE=b'WARC-Date',
+    TYPE=b'WARC-Type',
+    ID=b'WARC-Record-ID',
+    CONCURRENT_TO=b'WARC-Concurrent-To',
+    REFERS_TO=b'WARC-Refers-To',
+    REFERS_TO_TARGET_URI=b'WARC-Refers-To-Target-URI',
+    REFERS_TO_DATE=b'WARC-Refers-To-Date',
+    CONTENT_LENGTH=b'Content-Length',
+    CONTENT_TYPE=b'Content-Type',
+    URL=b'WARC-Target-URI',
+    BLOCK_DIGEST=b'WARC-Block-Digest',
+    PAYLOAD_DIGEST=b'WARC-Payload-Digest',
+    IP_ADDRESS=b'WARC-IP-Address',
+    FILENAME=b'WARC-Filename',
+    WARCINFO_ID=b'WARC-Warcinfo-ID',
+    PROFILE=b'WARC-Profile'
 )
 class WarcRecord(ArchiveRecord):
 
@@ -36,14 +41,33 @@ class WarcRecord(ArchiveRecord):
     RESPONSE = b"response"
     RESOURCE = b"resource"
     REQUEST = b"request"
+    REVISIT = b"revisit"
     METADATA = b"metadata"
     CONVERSION = b"conversion"
     WARCINFO = b"warcinfo"
 
+    PROFILE_IDENTICAL_PAYLOAD_DIGEST = b"http://netpreserve.org/warc/1.0/revisit/identical-payload-digest"
+
+    TRAILER = b'\r\n\r\n'
+
     def __init__(self, version=VERSION, headers=None, content=None,
-                 errors=None):
+                 errors=None, content_file=None):
+        """
+        WarcRecord constructor.
+
+        Either content or content_file must be provided, but not both. If
+        content, which is a tuple (content_type, content_buffer), is provided,
+        when writing the warc record, any Content-Type and Content-Length that
+        appear in the supplied headers are ignored, and the values content[0]
+        and len(content[1]), respectively, are used. 
+
+        When reading, the caller can stream content_file or use content, which is
+        lazily filled using content_file, and after which content_file is
+        unavailable.
+        """
         ArchiveRecord.__init__(self, headers, content, errors)
         self.version = version
+        self.content_file = content_file
 
     @property
     def id(self):
@@ -62,40 +86,42 @@ class WarcRecord(ArchiveRecord):
         out.write(self.version)
         out.write(nl)
         for k, v in self.headers:
-            if k not in (self.CONTENT_TYPE,
-                         self.CONTENT_LENGTH,
-                         self.BLOCK_DIGEST):
+            if self.content_file is not None or k not in (self.CONTENT_TYPE, self.CONTENT_LENGTH):
                 out.write(k)
                 out.write(b": ")
                 out.write(v)
                 out.write(nl)
-        content_type, content_buffer = self.content
-        content_buffer = memoryview(content_buffer)
-        if content_type:
-            out.write(self.CONTENT_TYPE)
+
+        if self.content_file is not None:
+            out.write(nl) # end of header blank nl
+            while True:
+                buf = self.content_file.read(8192)
+                if buf == b'': break
+                out.write(buf)
+        else:
+            # if content tuple is provided, set Content-Type and
+            # Content-Length based on the values in the tuple
+            content_type, content_buffer = self.content
+            content_buffer = memoryview(content_buffer)
+            if content_type:
+                out.write(self.CONTENT_TYPE)
+                out.write(b": ")
+                out.write(content_type)
+                out.write(nl)
+            if content_buffer is None:
+                content_buffer = b""
+
+            content_length = len(content_buffer)
+            out.write(self.CONTENT_LENGTH)
             out.write(b": ")
-            out.write(content_type)
+            out.write(str(content_length).encode('ascii'))
             out.write(nl)
-        if content_buffer is None:
-            content_buffer = b""
 
-        content_length = len(content_buffer)
-        out.write(self.CONTENT_LENGTH)
-        out.write(b": ")
-        out.write(str(content_length).encode('utf-8'))
-        out.write(nl)
-
-        block_digest = self.block_digest(content_buffer)
-
-        out.write(self.BLOCK_DIGEST)
-        out.write(b": ")
-        out.write(block_digest.encode('utf-8'))
-        out.write(nl)
-
-        # end of header blank nl
-        out.write(nl)
-        if content_buffer:
-            out.write(content_buffer[:content_length])
+            out.write(nl) # end of header blank nl
+            if content_buffer:
+                out.write(content_buffer[:content_length])
+     
+        # end of record nl nl
         out.write(nl)
         out.write(nl)
         out.flush()
@@ -116,6 +142,15 @@ class WarcRecord(ArchiveRecord):
 
         digest = "sha256:%s" % block_hash.hexdigest()
         return digest
+
+    @staticmethod
+    def warc_uuid(text):
+        return "<urn:uuid:{}>".format(uuid.UUID(hashlib.sha1(text).hexdigest()[0:32]))
+
+    @staticmethod
+    def random_warc_uuid():
+        return "<urn:uuid:{}>".format(uuid.uuid4())
+
 
 def rx(pat):
     """Helper to compile regexps with IGNORECASE option set."""
@@ -141,9 +176,6 @@ required_headers = set((
 class WarcParser(ArchiveParser):
     KNOWN_VERSIONS = set(('1.0', '0.17', '0.18'))
 
-    def __init__(self):
-        self.trailing_newlines = 0
-
     def parse(self, stream, offset, line=None):
         """Reads a warc record from the stream, returns a tuple
         (record, errors).  Either records is null or errors is
@@ -155,25 +187,6 @@ class WarcParser(ArchiveParser):
         # find WARC/.*
         if line is None:
             line = stream.readline()
-        newlines = self.trailing_newlines
-        if newlines > 0:
-            while line:
-                match = nl_rx.match(line)
-                if match and newlines > 0:
-                    if offset is not None:
-                        offset += len(line)
-                    newlines -= 1
-                    if match.group('nl') != b'\x0d\x0a':
-                        errors.append(('incorrect trailing newline',
-                                       match.group('nl')))
-                    line = stream.readline()
-                    if newlines == 0:
-                        break
-                else:
-                    break
-
-            if newlines > 0:
-                errors += ('less than two terminating newlines at end of previous record, missing', newlines)
 
         while line:
             match = version_rx.match(line)
@@ -195,7 +208,6 @@ class WarcParser(ArchiveParser):
         if not line:
             if version:
                 errors.append(('warc version but no headers', version))
-            self.trailing_newlines = 0
             return (None, errors, offset)
         if line:
             content_length = 0
@@ -243,6 +255,8 @@ class WarcParser(ArchiveParser):
 
                     value = b" ".join(value)
 
+                    record.headers.append((name, value))
+
                     if type_rx.match(name):
                         if value:
                             content_type = value
@@ -255,77 +269,16 @@ class WarcParser(ArchiveParser):
                             #print content_length
                         except ValueError:
                             record.error('invalid header', name, value)
-                    else:
-                        record.headers.append((name, value))
 
             # have read blank line following headers
 
-            # read content
-            if content_length is not None:
-                if content_length > 0:
-                    content = stream.read(content_length)
-                    if len(content) != content_length:
-                        record.error('content length mismatch (is, claims)',
-                                     len(content), content_length)
-                    record.content = (content_type, content)
+            record.content_file = stream
+            record.content_file.bytes_to_eoc = content_length
 
-                    self.trailing_newlines = 2
-            else:
-                record.error('missing header', WarcRecord.CONTENT_LENGTH)
-                self.trailing_newlines = 2
-
-            # Fixed: READLINE BUG - eats trailing terminating newlines
-            # when content doesn't have a \n
-
-            #print 'read content', repr(line)
-            # have read trailing newlines
-
-            # check mandatory headers
-            #   WARC-Type
-            #   WARC-Date WARC-Record-ID Content-Length
-
-            # ignore mandatory newlines for now
-            # because they are missing.
-            # instead we trim a number of them off the next
-            # parse
-
-            # we can't re-wind easily without wrapping
-            # every file handle
-
-            # not brilliant but hey-ho
+            # check mandatory headers 
+            # WARC-Type WARC-Date WARC-Record-ID Content-Length
 
             return (record, (), offset)
-
-    def trim(self, stream):
-        """read the end of the file"""
-        newlines = self.trailing_newlines
-        self.trailing_newlines = 0
-        errors = []
-        if newlines:
-            line = stream.readline()
-            while line:
-                #print 'trimming', repr(line)
-                match = nl_rx.match(line)
-                if match:
-                    if match.group('nl') != b'\x0d\x0a':
-                        errors.append('incorrect trailing newline',
-                                      match.group('nl'))
-                    newlines -= 1
-                    #print 'newline'
-                    if newlines == 0:
-                        break
-
-                else:
-                    #print 'line', line, newlines
-                    newlines = 0
-                    errors.append(('trailing data after content', line))
-                line = stream.readline()
-            if newlines > 0:
-                errors.append(
-                    ('less than two terminating newlines at end of record, missing',
-                     newlines))
-
-        return errors
 
 
 blank_rx = rx(br'^$')

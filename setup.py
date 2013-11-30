@@ -1,23 +1,18 @@
 #!/usr/bin/env python
 
-import glob
-
+import os
 from setuptools import setup
 
-fh = open("version", "rb")
-version = fh.readline().strip().decode('utf-8')
-fh.close()
-
 setup(name='warctools',
-    version=version,
+    version="4.8.2",
     license="MIT License",
     description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
     author='Thomas Figg',
     author_email='tef@warctools.twentygototen.org',
     packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
-#    namespace_packages=["hanzo"],
-    test_suite="hanzo.httptools.tests",
-    test_loader="unittest2:TestLoader",
+    # namespace_packages=["hanzo"],
+    test_suite="nose.collector",
+    tests_require=["nose"],
     entry_points="""
         [console_scripts]
         warcdump=hanzo.warcdump:run

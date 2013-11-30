@@ -1,4 +1,7 @@
-from urllib.parse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    import urlparse
 
 from io import StringIO
 
