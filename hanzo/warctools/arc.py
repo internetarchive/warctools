@@ -1,4 +1,6 @@
-"""An object to represent arc records"""
+"""An object to represent arc records
+http://archive.org/web/researcher/ArcFileFormat.php
+"""
 
 import re
 
@@ -22,6 +24,9 @@ from hanzo.warctools.archive_detect import register_record_type
     FILENAME = 'Filename',
 )
 class ArcRecord(ArchiveRecord):
+
+    TRAILER = '\n'  # an ARC record is trailed by single unix newline
+
     """Represents a record in an arc file."""
     def __init__(self, headers=None, content=None, errors=None):
         ArchiveRecord.__init__(self, headers, content, errors) 
@@ -80,7 +85,6 @@ class ArcParser(ArchiveParser):
         # if we don't know 
 
         self.headers = []
-        self.trailing_newlines = 0
 
     def parse(self, stream, offset, line=None):
         """Parses a stream as an arc archive and returns an Arc record along
@@ -94,7 +98,6 @@ class ArcParser(ArchiveParser):
         while not line.rstrip():
             if not line:
                 return (None, (), offset)
-            self.trailing_newlines -= 1
             line = stream.readline()
 
         if line.startswith('filedesc:'):
@@ -145,25 +148,8 @@ class ArcParser(ArchiveParser):
 
         line = None
 
-        if content_length:
-            content = []
-            length = 0
-            while length < content_length:
-                line = stream.readline()
-                if not line:
-                    # print 'no more data' 
-                    break
-                content.append(line)
-                length += len(line)
-            content = "".join(content)
-            content, line = \
-                content[0:content_length], content[content_length+1:]
-            record.content = (content_type, content)
-
-        if line:
-            record.error('trailing data at end of record', line)
-        if  line == '':
-            self.trailing_newlines = 1
+        record.content_file = stream
+        record.content_file.bytes_to_eoc = content_length
 
         return (record, (), offset)
 

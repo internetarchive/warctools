@@ -2,16 +2,12 @@
 
 import os
 import sys
-
-import sys
-import os.path
-from cStringIO import StringIO
+import httplib
 
 from optparse import OptionParser
 from contextlib import closing
 
 from .warctools import WarcRecord
-from .httptools import RequestMessage, ResponseMessage
 
 parser = OptionParser(usage="%prog warc:offset")
 
@@ -20,8 +16,6 @@ parser.set_defaults(output_directory=None, limit=None, log_level="info")
 def main(argv):
     (options, args) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
-
     filename, offset = args[0].rsplit(':',1)
     if ',' in offset:
         offset, length = [int(n) for n in offset.split(',',1)]
@@ -29,43 +23,58 @@ def main(argv):
         offset = int(offset)
         length = None # unknown
 
-    payload = extract_payload_from_file(filename, offset, length)
-    out.write(payload)
+    dump_payload_from_file(filename, offset, length)
 
-def extract_payload_from_str(contents, gzip="record"):
-    with closing(StringIO(contents)) as stream, closing(WarcRecord.open_archive(file_handle=stream, gzip=gzip)) as fh:
-        return extract_payload_from_stream(fh)
-
-def extract_payload_from_file(filename, offset=None, length=None):
+def dump_payload_from_file(filename, offset=None, length=None):
     with closing(WarcRecord.open_archive(filename=filename, gzip="auto", offset=offset, length=length)) as fh:
-        return extract_payload_from_stream(fh)
+        return dump_payload_from_stream(fh)
 
-def extract_payload_from_stream(fh):
-    content = ""
+def dump_payload_from_stream(fh):
     for (offset, record, errors) in fh.read_records(limit=1, offsets=False):
         if record:
-            content_type, content = record.content
-            if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
-                content = parse_http_response(record)
+            if (record.type == WarcRecord.RESPONSE 
+                    and record.content_type.startswith('application/http')):
+                f = FileHTTPResponse(record.content_file)
+                f.begin()
+            else:
+                f = record.content_file
+
+            buf = f.read(8192) 
+            while buf != '':
+                sys.stdout.write(buf)
+                buf = f.read(8192)
+
         elif errors:
             print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
             for e in errors:
                 print '\t', e
 
-        return content
+class FileHTTPResponse(httplib.HTTPResponse):
+    """HTTPResponse subclass that reads from the supplied fileobj instead of
+    from a socket."""
 
-def parse_http_response(record):
-    message = ResponseMessage(RequestMessage())
-    remainder = message.feed(record.content[1])
-    message.close()
-    if remainder or not message.complete():
-        if remainder:
-            print >>sys.stderr, 'warning: trailing data in http response for', record.url
-        if not message.complete():
-            print >>sys.stderr, 'warning: truncated http response for', record.url
+    def __init__(self, fileobj, debuglevel=0, strict=0, method=None, buffering=False):
+        self.fp = fileobj
 
-    return message.get_body()
+        # We can't call HTTPResponse.__init__(self, ...) because it will try to
+        # call sock.makefile() and we have no sock. So we have to copy and
+        # paste the rest of the constructor below.
 
+        self.debuglevel = debuglevel
+        self.strict = strict
+        self._method = method
+
+        self.msg = None
+
+        # from the Status-Line of the response
+        self.version = 'UNKNOWN' # HTTP-Version
+        self.status = 'UNKNOWN'  # Status-Code
+        self.reason = 'UNKNOWN'  # Reason-Phrase
+
+        self.chunked = 'UNKNOWN'         # is "chunked" being used?
+        self.chunk_left = 'UNKNOWN'      # bytes left to read in current chunk
+        self.length = 'UNKNOWN'          # number of bytes left in response
+        self.will_close = 'UNKNOWN'      # conn will close at end of response
 
 
 def run():
