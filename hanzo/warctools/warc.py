@@ -179,7 +179,7 @@ required_headers = set((
 
 
 class WarcParser(ArchiveParser):
-    KNOWN_VERSIONS = set(('1.0', '0.17', '0.18'))
+    KNOWN_VERSIONS = set((b'1.0', b'0.17', b'0.18'))
 
     def parse(self, stream, offset, line=None):
         """Reads a warc record from the stream, returns a tuple

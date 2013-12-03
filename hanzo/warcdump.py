@@ -9,6 +9,8 @@ import os.path
 
 from optparse import OptionParser
 
+from six import print_
+
 from .warctools import WarcRecord, expand_files
 
 parser = OptionParser(usage="%prog [options] warc warc warc")
@@ -39,15 +41,15 @@ def main(argv):
 def dump_archive(fh, name, offsets=True):
     for (offset, record, errors) in fh.read_records(limit=None, offsets=offsets):
         if record:
-            print("archive record at %s:%s"%(name,offset))
+            print_("archive record at %s:%s"%(name,offset))
             record.dump(content=True)
         elif errors:
-            print("warc errors at %s:%d"%(name, offset if offset else 0))
+            print_("warc errors at %s:%d"%(name, offset if offset else 0))
             for e in errors:
-                print('\t', e)
+                print_('\t', e)
         else:
-            print()
-            print('note: no errors encountered in tail of file')
+            print_()
+            print_('note: no errors encountered in tail of file')
 
 def run():
     sys.exit(main(sys.argv))

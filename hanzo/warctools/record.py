@@ -2,10 +2,11 @@
 
 from gzip import GzipFile
 import re
+from six import print_
 
 from hanzo.warctools.stream import open_record_stream
 
-strip = re.compile(r'[^\w\t \|\\\/]')
+strip = re.compile(br'[^\w\t \|\\\/]')
 
 
 def add_headers(**kwargs):
@@ -24,11 +25,11 @@ class ArchiveParser(object):
     pass
 
 
-@add_headers(DATE='Date',
-             CONTENT_TYPE='Type',
-             CONTENT_LENGTH='Length',
-             TYPE='Type',
-             URL='Url')
+@add_headers(DATE=b'Date',
+             CONTENT_TYPE=b'Type',
+             CONTENT_LENGTH=b'Length',
+             TYPE=b'Type',
+             URL=b'Url')
 class ArchiveRecord(object):
     """An archive record has some headers, maybe some content and
     a list of errors encountered. record.headers is a list of tuples (name,
@@ -140,28 +141,28 @@ class ArchiveRecord(object):
         self.headers.append((name, value))
 
     def dump(self, content=True):
-        print('Headers:')
+        print_('Headers:')
         for (h, v) in self.headers:
-            print('\t%s:%s' % (h, v))
+            print_('\t%s:%s' % (h.decode('latin1'), v.decode('latin1')))
         if content and self.content:
-            print('Content Headers:')
+            print_('Content Headers:')
             content_type, content_body = self.content
-            print('\t', self.CONTENT_TYPE, ':', content_type)
-            print('\t', self.CONTENT_LENGTH, ':', len(content_body))
-            print('Content:')
+            print_('\t' + self.CONTENT_TYPE.decode('latin1'), ':', content_type.decode('latin1'))
+            print_('\t' + self.CONTENT_LENGTH.decode('latin1'), ':', len(content_body))
+            print_('Content:')
             ln = min(1024, len(content_body))
-            print('\t', strip.sub(lambda x: '\\x%00X' % ord(x.group()),
-                                  content_body[:ln]))
-            print('\t...')
-            print()
+            abbr_strp_content = strip.sub(lambda x: ('\\x%00X' % ord(x.group())).encode('ascii'), content_body[:ln])
+            print_('\t' + abbr_strp_content.decode('ascii'))
+            print_('\t...')
+            print_()
         else:
-            print('Content: none')
-            print()
-            print()
+            print_('Content: none')
+            print_()
+            print_()
         if self.errors:
-            print('Errors:')
+            print_('Errors:')
             for e in self.errors:
-                print('\t', e)
+                print_('\t' + e)
 
     def write_to(self, out, newline=b'\x0D\x0A', gzip=False):
         if self.content_file is not None:
