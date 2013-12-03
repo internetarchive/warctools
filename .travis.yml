@@ -1,14 +1,11 @@
 # vim: set sw=4 et:
 #
-# http://borntyping.co.uk/posts/tox-and-travis-ci.html
-#
 
 language: python
 python:
-    - TOXENV=py26
-    - TOXENV=py27
-    - TOXENV=py32
-    - TOXENV=py33
-install: pip install tox
-script: tox
+    - "2.6"
+    - "2.7"
+    - "3.2"
+    - "3.3"
+script: python setup.py test
 
