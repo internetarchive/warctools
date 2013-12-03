@@ -1,6 +1,14 @@
 # vim: set sw=4 et:
 
 import unittest
+
+# want unittest2 for python2.6
+try:
+    unittest.TestCase.assertIsNone
+except AttributeError:
+    import unittest2
+    unittest = unittest2
+
 import tempfile
 import gzip
 from hanzo import warctools, httptools

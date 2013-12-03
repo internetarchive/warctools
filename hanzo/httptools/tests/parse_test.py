@@ -1,6 +1,13 @@
 """Tests for http parsing."""
 import unittest
 
+# want unittest2 for python2.6
+try:
+    unittest.TestCase.assertIsNone
+except AttributeError:
+    import unittest2
+    unittest = unittest2
+
 from hanzo.httptools.messaging import \
     RequestMessage, \
     ResponseMessage
