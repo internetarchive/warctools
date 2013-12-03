@@ -180,7 +180,8 @@ class GeeZipFile(gzip.GzipFile):
 
     def __init__(self, filename=None, mode=None,
                  compresslevel=9, fileobj=None, mtime=None):
-        gzip.GzipFile.__init__(self, filename, mode, compresslevel, fileobj, mtime)
+        # ignore mtime for python 2.6
+        gzip.GzipFile.__init__(self, filename=filename, mode=mode, compresslevel=compresslevel, fileobj=fileobj)
         self.member_offset = None
 
     # hook in to the place we seem to be able to reliably get the raw gzip

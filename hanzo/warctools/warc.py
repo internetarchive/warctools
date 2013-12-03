@@ -102,7 +102,12 @@ class WarcRecord(ArchiveRecord):
             # if content tuple is provided, set Content-Type and
             # Content-Length based on the values in the tuple
             content_type, content_buffer = self.content
-            content_buffer = memoryview(content_buffer)
+
+            try:
+                content_buffer = memoryview(content_buffer)
+            except NameError:
+                content_buffer = buffer(content_buffer) # python 2.6
+
             if content_type:
                 out.write(self.CONTENT_TYPE)
                 out.write(b": ")
