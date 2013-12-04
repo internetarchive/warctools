@@ -11,6 +11,7 @@ import os.path
 import datetime
 import socket
 
+from six import print_
 
 from optparse import OptionParser
 
@@ -48,21 +49,21 @@ def is_http_response(content):
 
 
 class ArcTransformer(object):
-    def __init__(self, output_filename=None, warcinfo_fields='software: hanzo.arc2warc\r\n', resources=(), responses=()):
+    def __init__(self, output_filename=None, warcinfo_fields=b'software: hanzo.arc2warc\r\n', resources=(), responses=()):
         self.warcinfo_id = None
         self.output_filename = output_filename
-        self.version = "WARC/1.0"
+        self.version = b"WARC/1.0"
         self.warcinfo_fields = warcinfo_fields
         self.resources = resources
         self.responses = responses
 
     @staticmethod
     def make_warc_uuid(text):
-        return "<urn:uuid:%s>"%uuid.UUID(hashlib.sha1(text).hexdigest()[0:32])
+        return ("<urn:uuid:%s>"%uuid.UUID(hashlib.sha1(text).hexdigest()[0:32])).encode('ascii')
 
     def convert(self, record):
 
-        if record.type == 'filedesc':
+        if record.type == b'filedesc':
             return self.convert_filedesc(record)
         else:
             return self.convert_record(record)
@@ -81,24 +82,24 @@ class ArcTransformer(object):
         if self.output_filename:
             warcinfo_headers.append((WarcRecord.FILENAME, self.output_filename))
 
-        warcinfo_content = ('application/warc-fields', self.warcinfo_fields)
+        warcinfo_content = (b'application/warc-fields', self.warcinfo_fields)
 
         inforecord = WarcRecord(headers=warcinfo_headers, content=warcinfo_content, version=self.version)
 
         if record.date:
             if len(record.date) >= 14:
-                warcmeta_date = datetime.datetime.strptime(record.date[:14],'%Y%m%d%H%M%S')
+                warcmeta_date = datetime.datetime.strptime(record.date[:14].decode('ascii'),'%Y%m%d%H%M%S')
             else:
-                warcmeta_date = datetime.datetime.strptime(record.date[:8],'%Y%m%d')
+                warcmeta_date = datetime.datetime.strptime(record.date[:8].decode('ascii'),'%Y%m%d')
 
             warcmeta_date = warc_datetime_str(warcmeta_date)
         else:
             warcmeta_date = warcinfo_date
 
 
-        warcmeta_id = self.make_warc_uuid(record.url+record.date+"-meta")
+        warcmeta_id = self.make_warc_uuid(record.url+record.date+b"-meta")
         warcmeta_url = record.url
-        if warcmeta_url.startswith('filedesc://'):
+        if warcmeta_url.startswith(b'filedesc://'):
             warcmeta_url = warcmeta_url[11:]
         warcmeta_headers = [
             (WarcRecord.TYPE, WarcRecord.METADATA),
@@ -108,7 +109,7 @@ class ArcTransformer(object):
             (WarcRecord.DATE, warcmeta_date),
             (WarcRecord.WARCINFO_ID, warcinfo_id),
         ]
-        warcmeta_content =('application/arc', record.raw())
+        warcmeta_content =(b'application/arc', record.raw())
 
         metarecord = WarcRecord(headers=warcmeta_headers, content=warcmeta_content, version=self.version)
 
@@ -127,9 +128,9 @@ class ArcTransformer(object):
 
         if record.date:
             try:
-                date = datetime.datetime.strptime(record.date,'%Y%m%d%H%M%S')
+                date = datetime.datetime.strptime(record.date.decode('ascii'),'%Y%m%d%H%M%S')
             except ValueError:
-                date = datetime.datetime.strptime(record.date,'%Y%m%d')
+                date = datetime.datetime.strptime(record.date.decode('ascii'),'%Y%m%d')
 
         else:
             date = datetime.datetime.now()
@@ -137,7 +138,7 @@ class ArcTransformer(object):
         ip = record.get_header(ArcRecord.IP)
         if ip:
             ip = ip.strip()
-            if ip != "0.0.0.0":
+            if ip != b"0.0.0.0":
                 headers.append((WarcRecord.IP_ADDRESS, ip))
             
 
@@ -146,7 +147,7 @@ class ArcTransformer(object):
         content_type, content = record.content
 
         if not content_type.strip():
-            content_type = 'application/octet-stream'
+            content_type = b'application/octet-stream'
 
         url = record.url.lower()
 
@@ -155,14 +156,14 @@ class ArcTransformer(object):
             record_type = WarcRecord.RESOURCE
         elif any(url.startswith(p) for p in self.responses):
             record_type = WarcRecord.RESPONSE
-        elif url.startswith('http'):
+        elif url.startswith(b'http'):
             if is_http_response(content):
-                content_type="application/http;msgtype=response"
+                content_type=b"application/http;msgtype=response"
                 record_type = WarcRecord.RESPONSE
             else:
                 record_type = WarcRecord.RESOURCE
-        elif url.startswith('dns'):
-            if content_type.startswith('text/dns') and str(content.decode('ascii', 'ignore')) == content:
+        elif url.startswith(b'dns'):
+            if content_type.startswith(b'text/dns') and str(content.decode('ascii', 'ignore')) == content:
                 record_type = WarcRecord.RESOURCE
             else:
                 record_type = WarcRecord.RESPONSE
@@ -184,7 +185,7 @@ def warcinfo_fields(description="", operator="", publisher="", audience=""):
         "operator: %s"%operator,
         "publisher: %s"%publisher,
         "audience: %s"%audience,
-    ])
+    ]).encode('utf-8')
 
 ## todo
 """
@@ -195,7 +196,11 @@ def warcinfo_fields(description="", operator="", publisher="", audience=""):
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
+    try: # python3
+        out = sys.stdout.buffer
+    except AttributeError: # python2
+        out = sys.stdout
+
     if options.output:
         out = open(options.output, 'ab')
         if options.output.endswith('.gz'):
@@ -208,7 +213,6 @@ def main(argv):
         operator = options.operator,
         publisher = options.publisher,
         audience = options.audience,
-
     )
     arc = ArcTransformer(options.output, warcinfo, options.resource, options.response)
     for name in expand_files(input_files):
@@ -216,10 +220,10 @@ def main(argv):
         try:
             for record in fh:
                 if isinstance(record, WarcRecord):
-                    print('   WARC', record.url, file=sys.stderr)
+                    print_('   WARC', record.url, file=sys.stderr)
                     warcs = [record]
                 else:
-                    print('ARC    ', record.url, file=sys.stderr)
+                    print_('ARC    ', record.url, file=sys.stderr)
                     warcs = arc.convert(record)
 
                 for warcrecord in warcs:

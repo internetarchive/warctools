@@ -106,7 +106,7 @@ class HTTPMessage(object):
                         self.body_reader = ChunkReader()
                     else:
                         length = self.header.body_length()
-                        if length >= 0:
+                        if length is not None:
                             self.body_reader = LengthReader(length)
                             self.body_chunks = [(self.offset, length)]
                             if length == 0:

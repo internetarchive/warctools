@@ -148,6 +148,12 @@ class RecordStream(object):
 
         return self._read(read_size)
 
+    # XXX dumb implementation to support python3 http.client
+    def readinto(self, b):
+        tmp = self.read(count=len(b))
+        b[:len(tmp)] = tmp
+        return len(tmp)
+
     def readline(self, maxlen=None):
         """Safe readline for reading content, will not read past the end of the
         payload, assuming self.bytes_to_eoc is set. The record's trailing

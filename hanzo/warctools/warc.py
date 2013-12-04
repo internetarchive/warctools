@@ -103,11 +103,6 @@ class WarcRecord(ArchiveRecord):
             # Content-Length based on the values in the tuple
             content_type, content_buffer = self.content
 
-            try:
-                content_buffer = memoryview(content_buffer)
-            except NameError:
-                content_buffer = buffer(content_buffer) # python 2.6
-
             if content_type:
                 out.write(self.CONTENT_TYPE)
                 out.write(b": ")
@@ -124,7 +119,7 @@ class WarcRecord(ArchiveRecord):
 
             out.write(nl) # end of header blank nl
             if content_buffer:
-                out.write(content_buffer[:content_length])
+                out.write(content_buffer)
      
         # end of record nl nl
         out.write(nl)
@@ -367,4 +362,4 @@ def warc_datetime_str(d):
     s = d.isoformat()
     if '.' in s:
         s = s[:s.find('.')]
-    return s + 'Z'
+    return (s + 'Z').encode('utf-8')

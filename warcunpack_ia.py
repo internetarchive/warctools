@@ -10,8 +10,12 @@ import shlex
 
 from optparse import OptionParser
 from contextlib import closing
-from urllib.parse import urlparse
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
+from six import print_
 
 from hanzo.warctools import ArchiveRecord, WarcRecord
 from hanzo.httptools import RequestMessage, ResponseMessage
@@ -29,11 +33,11 @@ parser.set_defaults(output=None, log_file=None, default_name='crawlerdefault', w
 
 
 def log_headers(log_file):
-    print('>>warc_file\twarc_id\twarc_type\twarc_content_length\twarc_uri_date\twarc_subject_uri\turi_content_type\toutfile\twayback_uri', file=log_file)
+    print_('>>warc_file\twarc_id\twarc_type\twarc_content_length\twarc_uri_date\twarc_subject_uri\turi_content_type\toutfile\twayback_uri', file=log_file)
 
 def log_entry(log_file, input_file, record, content_type, output_file, wayback_uri):
     log = (input_file, record.id, record.type, record.content_length, record.date, record.url, content_type, output_file, wayback_uri)
-    print("\t".join(str(s) for s in log), file=log_file)
+    print_("\t".join(str(s) for s in log), file=log_file)
 
 def main(argv):
     (options, args) = parser.parse_args(args=argv[1:])
@@ -67,9 +71,9 @@ def main(argv):
                     collisions+=unpack_records(filename, fh, output_dir, options.default_name, log_file, options.wayback)
 
             except Exception as e:
-                print("exception in handling", filename, e, file=sys.stderr)
+                print_("exception in handling", filename, e, file=sys.stderr)
     if collisions:
-        print(collisions, "filenames that collided", file=sys.stderr)
+        print_(collisions, "filenames that collided", file=sys.stderr)
         
 
     return 0
@@ -116,13 +120,13 @@ def unpack_records(name, fh, output_dir, default_name, output_log, wayback_prefi
 
             except Exception as e:
                 import traceback; traceback.print_exc()
-                print("exception in handling record", e, file=sys.stderr)
+                print_("exception in handling record", e, file=sys.stderr)
 
         elif errors:
-            print("warc errors at %s:%d"%(name, offset if offset else 0), end=' ', file=sys.stderr)
+            print_("warc errors at %s:%d"%(name, offset if offset else 0), end=' ', file=sys.stderr)
             for e in errors:
-                print(e, end=' ', file=sys.stderr)
-            print(file=sys.stderr)
+                print_(e, end=' ', file=sys.stderr)
+            print_(file=sys.stderr)
     return collisions
 
 def parse_warcinfo(record):
@@ -135,9 +139,9 @@ def parse_warcinfo(record):
                     key, value =line.split(':',1)
                     info[key]=value
                 except Exception as e:
-                        print('malformed warcinfo line', line, file=sys.stderr)
+                        print_('malformed warcinfo line', line, file=sys.stderr)
     except Exception as e:
-            print('exception reading warcinfo record', e, file=sys.stderr)
+            print_('exception reading warcinfo record', e, file=sys.stderr)
     return info
 
 def parse_http_response(record):
@@ -146,9 +150,9 @@ def parse_http_response(record):
     message.close()
     if remainder or not message.complete():
         if remainder:
-            print('warning: trailing data in http response for', record.url, file=sys.stderr)
+            print_('warning: trailing data in http response for', record.url, file=sys.stderr)
         if not message.complete():
-            print('warning: truncated http response for', record.url, file=sys.stderr)
+            print_('warning: truncated http response for', record.url, file=sys.stderr)
 
     header = message.header
 

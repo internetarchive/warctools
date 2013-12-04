@@ -24,7 +24,11 @@ parser.set_defaults(output=None, limit=None, log_level="info")
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout.buffer
+    try: # python3
+        out = sys.stdout.buffer
+    except AttributeError: # python2
+        out = sys.stdout
+
     if len(input_files) < 1:
         parser.error("no imput warc file(s)")
         
@@ -41,9 +45,8 @@ def main(argv):
                             record.url or b'-', 
                             record.id or b'-', 
                             record.content_type or b'-',
-                            str(record.content_length).encode('utf-8'), 
-                            b'\n']
-                    out.write(b' '.join(fields))
+                            str(record.content_length).encode('utf-8')]
+                    out.write(b' '.join(fields) + b'\n')
                 elif errors:
                     pass
                     # ignore

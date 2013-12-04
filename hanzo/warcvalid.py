@@ -35,14 +35,14 @@ def main(argv):
 
             for (offset, record, errors) in fh.read_records(limit=None):
                 if errors:
-                    print("warc errors at %s:%d"%(name, offset), file=sys.stderr)
-                    print(errors, file=sys.stderr)
+                    print_("warc errors at %s:%d"%(name, offset), file=sys.stderr)
+                    print_(errors, file=sys.stderr)
                     correct=False
 
                     break
                 elif record is not None and record.validate(): # ugh name, returns errorsa
-                    print("warc errors at %s:%d"%(name, offset), file=sys.stderr)
-                    print(record.validate(), file=sys.stderr)
+                    print_("warc errors at %s:%d"%(name, offset), file=sys.stderr)
+                    print_(record.validate(), file=sys.stderr)
                     correct=False
                     break
                 

@@ -5,6 +5,8 @@ import sys
 import os.path
 import logging
 
+from six import print_
+
 from urllib.parse import urlparse, urlunparse
 from html.parser import HTMLParser, HTMLParseError
 from optparse import OptionParser
@@ -211,7 +213,7 @@ def main(argv):
         try:
             with closing(WarcRecord.open_archive(filename=warc, gzip="auto")) as fh:
                 for link in extract_links_from_warcfh(fh):
-                    print(link)
+                    print_(link)
 
         except Exception as e:
             logging.error(str(e))

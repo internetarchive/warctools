@@ -36,9 +36,9 @@ def parse_http_response(record):
 
     header = message.header
 
-    mime_type = [v for k,v in header.headers if k.lower() =='content-type']
+    mime_type = [v for k,v in header.headers if k.lower() == b'content-type']
     if mime_type:
-        mime_type = mime_type[0].split(';')[0]
+        mime_type = mime_type[0].split(b';')[0]
     else:
         mime_type = None
 
@@ -47,16 +47,19 @@ def parse_http_response(record):
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
+    try: # python3
+        out = sys.stdout.buffer
+    except AttributeError: # python2
+        out = sys.stdout
+
     if len(input_files) < 1:
         parser.error("no pattern")
 
         
-    pattern, input_files = input_files[0], input_files[1:]
+    pattern, input_files = input_files[0].encode(), input_files[1:]
 
 
     invert = options.invert
-    out = sys.stdout
     pattern = re.compile(pattern)
     if not input_files:
             fh = WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)
@@ -88,7 +91,7 @@ def filter_archive(fh, options, pattern, out):
                     record.write_to(out)
 
             elif options.http_content_type:
-                if record.type == WarcRecord.RESPONSE and record.content_type.startswith('application/http'):
+                if record.type == WarcRecord.RESPONSE and record.content_type.startswith(b'application/http'):
                     code, content_type, message = parse_http_response(record)
 
                     if bool(content_type and pattern.search(content_type)) ^ invert:

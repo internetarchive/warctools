@@ -58,7 +58,7 @@ class ArcRecordHeader(ArcRecord):
 
     def raw(self):
         """Return the raw representation of this record."""
-        return "".join(self.raw_headers) + self.content[1]
+        return b"".join(self.raw_headers) + self.content[1]
 
 def rx(pat):
     """Helper function to compile a regular expression with the IGNORECASE

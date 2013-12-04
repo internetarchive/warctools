@@ -111,7 +111,7 @@ class ArchiveRecord(object):
             if content_type is not None:
                 return content_type
 
-        return ArchiveRecord.self.content_type
+        return self.content[0]
 
     @property
     def content_length(self):
@@ -123,7 +123,7 @@ class ArchiveRecord(object):
             if content_length is not None:
                 return int(content_length)
 
-        return ArchiveRecord.self.content_length
+        return len(self.content[1])
 
     @property
     def url(self):
