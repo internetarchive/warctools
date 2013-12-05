@@ -145,11 +145,11 @@ class WarcRecord(ArchiveRecord):
 
     @staticmethod
     def warc_uuid(text):
-        return "<urn:uuid:{}>".format(uuid.UUID(hashlib.sha1(text).hexdigest()[0:32]))
+        return "<urn:uuid:{}>".format(uuid.UUID(hashlib.sha1(text).hexdigest()[0:32])).encode('ascii')
 
     @staticmethod
     def random_warc_uuid():
-        return "<urn:uuid:{}>".format(uuid.uuid4())
+        return "<urn:uuid:{}>".format(uuid.uuid4()).encode('ascii')
 
 
 def rx(pat):
