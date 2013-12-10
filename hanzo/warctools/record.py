@@ -1,20 +1,21 @@
 """a skeleton class for archive records"""
 
+from __future__ import print_function
 from gzip import GzipFile
 import re
 
 from hanzo.warctools.stream import open_record_stream
 
-strip = re.compile(r'[^\w\t \|\\\/]')
+strip = re.compile(br'[^\w\t \|\\\/]')
 
 
 def add_headers(**kwargs):
     """a useful helper for defining header names in record formats"""
 
     def _add_headers(cls):
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(cls, k, v)
-        cls._HEADERS = kwargs.keys()
+        cls._HEADERS = list(kwargs.keys())
         return cls
     return _add_headers
 
@@ -24,11 +25,11 @@ class ArchiveParser(object):
     pass
 
 
-@add_headers(DATE='Date',
-             CONTENT_TYPE='Type',
-             CONTENT_LENGTH='Length',
-             TYPE='Type',
-             URL='Url')
+@add_headers(DATE=b'Date',
+             CONTENT_TYPE=b'Type',
+             CONTENT_LENGTH=b'Length',
+             TYPE=b'Type',
+             URL=b'Url')
 class ArchiveRecord(object):
     """An archive record has some headers, maybe some content and
     a list of errors encountered. record.headers is a list of tuples (name,
@@ -110,7 +111,7 @@ class ArchiveRecord(object):
             if content_type is not None:
                 return content_type
 
-        return ArchiveRecord.self.content_type
+        return self.content[0]
 
     @property
     def content_length(self):
@@ -122,7 +123,7 @@ class ArchiveRecord(object):
             if content_length is not None:
                 return int(content_length)
 
-        return ArchiveRecord.self.content_length
+        return len(self.content[1])
 
     @property
     def url(self):
@@ -140,30 +141,30 @@ class ArchiveRecord(object):
         self.headers.append((name, value))
 
     def dump(self, content=True):
-        print 'Headers:'
+        print('Headers:')
         for (h, v) in self.headers:
-            print '\t%s:%s' % (h, v)
+            print('\t%s:%s' % (h.decode('latin1'), v.decode('latin1')))
         if content and self.content:
-            print 'Content Headers:'
+            print('Content Headers:')
             content_type, content_body = self.content
-            print '\t', self.CONTENT_TYPE, ':', content_type
-            print '\t', self.CONTENT_LENGTH, ':', len(content_body)
-            print 'Content:'
+            print('\t' + self.CONTENT_TYPE.decode('latin1'), ':', content_type.decode('latin1'))
+            print('\t' + self.CONTENT_LENGTH.decode('latin1'), ':', len(content_body))
+            print('Content:')
             ln = min(1024, len(content_body))
-            print '\t', strip.sub(lambda x: '\\x%00X' % ord(x.group()),
-                                  content_body[:ln])
-            print '\t...'
-            print
+            abbr_strp_content = strip.sub(lambda x: ('\\x%00X' % ord(x.group())).encode('ascii'), content_body[:ln])
+            print('\t' + abbr_strp_content.decode('ascii'))
+            print('\t...')
+            print()
         else:
-            print 'Content: none'
-            print
-            print
+            print('Content: none')
+            print()
+            print()
         if self.errors:
-            print 'Errors:'
+            print('Errors:')
             for e in self.errors:
-                print '\t', e
+                print('\t' + e)
 
-    def write_to(self, out, newline='\x0D\x0A', gzip=False):
+    def write_to(self, out, newline=b'\x0D\x0A', gzip=False):
         if self.content_file is not None:
             if not self._content_file_valid:
                 raise Exception('cannot write record because content_file has already been used')
@@ -201,4 +202,4 @@ class ArchiveRecord(object):
         errors).  Either records is null or errors is null. Any
         record-specific errors are contained in the record - errors is only
         used when *nothing* could be parsed"""
-        raise StandardError()
+        raise Exception()

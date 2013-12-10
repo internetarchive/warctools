@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """warc2warc - convert one warc to another, can be used to re-compress things"""
 
+from __future__ import print_function
+
 import os
 import sys
 
@@ -54,14 +56,18 @@ def process(record, out, options):
                         error.append("%d bytes unparsed"%len(leftover))
                     if not message.complete():
                         error.append("incomplete message (at %s, %s)"%(message.mode, message.header.mode))
-                    print >> sys.stderr, 'errors decoding http in record', record.id, ",".join(error)
+                    print('errors decoding http in record', record.id, ",".join(error), file=sys.stderr)
 
     record.write_to(out, gzip=options.gzip)
 
 def main(argv):
     (options, input_files) = parser.parse_args(args=argv[1:])
 
-    out = sys.stdout
+    try: # python3
+        out = sys.stdout.buffer
+    except AttributeError: # python2
+        out = sys.stdout
+
     if len(input_files) < 1:
         fh = WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)
 

@@ -14,13 +14,13 @@ import re
 import zlib
 
 
-class ParseError(StandardError):
+class ParseError(Exception):
     """Baseclass for all http parsing errors"""
     pass
 
 from hanzo.httptools.semantics import Codes, Methods
 
-NEWLINES = ('\r\n', '\n')
+NEWLINES = (b'\r\n', b'\n')
 
 
 class BrokenChunks(Exception):
@@ -29,7 +29,7 @@ class BrokenChunks(Exception):
 class HTTPMessage(object):
     """A stream based parser for http like messages"""
 
-    CONTENT_TYPE = "application/http"
+    CONTENT_TYPE = b"application/http"
 
     def __init__(self, header, buf=None, offset=0):
         self.buffer = buf if buf is not None else bytearray()
@@ -106,7 +106,7 @@ class HTTPMessage(object):
                         self.body_reader = ChunkReader()
                     else:
                         length = self.header.body_length()
-                        if length >= 0:
+                        if length is not None:
                             self.body_reader = LengthReader(length)
                             self.body_chunks = [(self.offset, length)]
                             if length == 0:
@@ -160,16 +160,16 @@ class HTTPMessage(object):
         """Feed text into the buffer, returning the first line found (if found
         yet)"""
         self.buffer.extend(text)
-        pos = self.buffer.find('\n', self.offset)
+        pos = self.buffer.find(b'\n', self.offset)
         if pos > -1:
             pos += 1
-            text = str(self.buffer[pos:])
+            text = bytes(self.buffer[pos:])
             del self.buffer[pos:]
-            line = str(self.buffer[self.offset:])
+            line = bytes(self.buffer[self.offset:])
             self.offset = len(self.buffer)
         else:
             line = None
-            text = ''
+            text = b''
         return line, text
 
     def feed_length(self, text, remaining):
@@ -206,19 +206,19 @@ class HTTPMessage(object):
 
     def get_message(self):
         """Returns the contents of the input buffer."""
-        return str(self.buffer)
+        return bytes(self.buffer)
 
     def get_decoded_message(self):
         """Return the input stream reconstructed from the parsed
         data."""
         buf = bytearray()
         self.write_decoded_message(buf)
-        return str(buf)
+        return bytes(buf)
 
     def write_message(self, buf):
         #TODO: No idea what this does, looks broken
         self.header.write(buf)
-        buf.extend('\r\n')
+        buf.extend(b'\r\n')
         self.write_body(buf)
 
     def write_decoded_message(self, buf):
@@ -226,7 +226,7 @@ class HTTPMessage(object):
         self.header.write_decoded(buf)
         if self.header.has_body():
             length = sum(l for o, l in self.body_chunks)
-            buf.extend('Content-Length: %d\r\n' % length)
+            buf.extend(b'Content-Length: ' + str(length).encode('ascii') + b'\r\n')
         body = self.get_body()
         if self.header.encoding and body:
             try:
@@ -235,17 +235,19 @@ class HTTPMessage(object):
                 try:
                     body = zlib.decompress(body, 16 + zlib.MAX_WBITS)
                 except zlib.error:
-                    encoding_header = "Content-Encoding: %s\r\n" \
-                        % self.header.encoding
+                    encoding_header = b"Content-Encoding: " + self.header.encoding + b"\r\n"
                     buf.extend(encoding_header)
-        buf.extend('\r\n')
-        buf.extend(body)
+        buf.extend(b'\r\n')
+        try:
+            buf.extend(body)
+        except Exception as e:
+            raise Exception('buf={} body={} e={}'.format(repr(buf), repr(body), e))
 
     def get_body(self):
         """Returns the body of the HTTP message."""
         buf = bytearray()
         self.write_body(buf)
-        return str(buf)
+        return bytes(buf)
 
     def write_body(self, buf):
         """Writes the body of the HTTP message to the passed
@@ -283,7 +285,7 @@ class ChunkReader(object):
 
         if line is not None:
             try:
-                chunk = int(line.split(';', 1)[0], 16)
+                chunk = int(line.split(b';', 1)[0], 16)
             except ValueError:
                 # ugh, this means the chunk is probably not a chunk
                 if self.start:
@@ -361,8 +363,9 @@ class LengthReader(object):
 
 
 class HTTPHeader(object):
-    STRIP_HEADERS = [n.lower() for n in ('Content-Length', 'Transfer-Encoding', 'Content-Encoding',
-                     'TE', 'Expect', 'Trailer')]
+    STRIP_HEADERS = [n.lower() for n in (b'Content-Length',
+                     b'Transfer-Encoding', b'Content-Encoding',
+                     b'TE', b'Expect', b'Trailer')]
 
     def __init__(self, ignore_headers):
         self.headers = []
@@ -391,21 +394,21 @@ class HTTPHeader(object):
     def write_headers(self, buf, strip_headers=()):
         for k, v in self.headers:
             if k.lower() not in strip_headers:
-                buf.extend('%s: %s\r\n' % (k, v))
+                buf.extend(k + b': ' + v + b'\r\n')
         for k, v in self.trailers:
             if k.lower() not in strip_headers:
-                buf.extend('%s: %s\r\n' % (k, v))
+                buf.extend(k + b': ' + v + b'\r\n')
 
     def add_trailer_line(self, line):
-        if line.startswith(' ') or line.startswith('\t'):
+        if line.startswith(b' ') or line.startswith(b'\t'):
             k, v = self.trailers.pop()
             line = line.strip()
-            v = "%s %s" % (v, line)
+            v = v + b' ' + line
             self.trailers.append((k, v))
         elif line in NEWLINES:
             pass
         else:
-            name, value = line.split(':', 1)
+            name, value = line.split(b':', 1)
             name = name.strip()
             value = value.strip()
             self.trailers.append((name, value))
@@ -414,10 +417,10 @@ class HTTPHeader(object):
         self.headers.append((name, value))
 
     def add_header_line(self, line):
-        if line.startswith(' ') or line.startswith('\t'):
+        if line.startswith(b' ') or line.startswith(b'\t'):
             k, v = self.headers.pop()
             line = line.strip()
-            v = "%s %s" % (v, line)
+            v = v + b' ' + line
             self.add_header(k, v)
 
         elif line in NEWLINES:
@@ -430,30 +433,29 @@ class HTTPHeader(object):
                 if name in self.ignore_headers:
                     #print >> sys.stderr, 'ignore', name
                     pass
-                elif name == 'expect':
-                    if '100-continue' in value:
+                elif name == b'expect':
+                    if b'100-continue' in value:
                         self.expect_continue = True
-                elif name == 'content-length':
+                elif name == b'content-length':
                     if self.mode == 'close':
                         self.content_length = int(value)
                         self.mode = 'length'
 
-                elif name == 'transfer-encoding':
-                    if 'chunked' in value:
+                elif name == b'transfer-encoding':
+                    if b'chunked' in value:
                         self.mode = 'chunked'
 
-                elif name == 'content-encoding':
+                elif name == b'content-encoding':
                     self.encoding = value
 
-                elif name == 'connection':
-                    if 'keep-alive' in value:
+                elif name == b'connection':
+                    if b'keep-alive' in value:
                         self.keep_alive = True
-                    elif 'close' in value:
+                    elif b'close' in value:
                         self.keep_alive = False
 
         else:
-            #print line
-            name, value = line.split(':', 1)
+            name, value = line.split(b':', 1)
             name = name.strip()
             value = value.strip()
             self.add_header(name, value)
@@ -466,8 +468,8 @@ class HTTPHeader(object):
             return self.content_length
 
 url_rx = re.compile(
-    '(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)'
-    '(?P<path>.*)',
+    b'(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)'
+    b'(?P<path>.*)',
     re.I)
 
 
@@ -494,20 +496,21 @@ class RequestHeader(HTTPHeader):
 
     def add_header(self, name, value):
 
-        if name.lower() == 'host':
-            if ':' in value:
-                self.host, self.port = value.split(':',1)
+        if name.lower() == b'host':
+            if b':' in value:
+                self.host, self.port = value.split(b':',1)
             else:
                 self.host = value
 
         return HTTPHeader.add_header(self, name, value)
+
     def set_start_line(self, line):
         self.method, self.target_uri, self.version = \
-            line.rstrip().split(' ', 2)
+            line.rstrip().split(b' ', 2)
 
-        if self.method.upper() == "CONNECT":
+        if self.method.upper() == b"CONNECT":
             # target_uri = host:port
-            self.host, self.port = self.target_uri.split(':')
+            self.host, self.port = self.target_uri.split(b':')
         else:
             match = url_rx.match(self.target_uri)
             if match:
@@ -531,9 +534,7 @@ class RequestHeader(HTTPHeader):
         return self.mode in ('chunked', 'length')
 
     def write_decoded_start(self, buf):
-        buf.extend('%s %s %s\r\n' % (self.method,
-                                     self.target_uri,
-                                     self.version))
+        buf.extend(self.method + b' ' + self.target_uri + b' ' + self.version + b'\r\n')
 
 
 class ResponseHeader(HTTPHeader):
@@ -541,7 +542,7 @@ class ResponseHeader(HTTPHeader):
     def __init__(self, request=None, ignore_headers=()):
         HTTPHeader.__init__(self, ignore_headers=ignore_headers)
         self.request = request
-        self.version = "HTTP/1.1"
+        self.version = b"HTTP/1.1"
         self.code = 0
         self.phrase = "Empty Response"
 
@@ -566,12 +567,12 @@ class ResponseHeader(HTTPHeader):
         return self.request.scheme
 
     def set_start_line(self, line):
-        parts = line.rstrip().split(' ', 2)
+        parts = line.rstrip().split(b' ', 2)
         self.version, self.code = parts[:2]
-        self.phrase = parts[2] if len(parts) >= 3 else ""
+        self.phrase = parts[2] if len(parts) >= 3 else b""
 
         self.code = int(self.code)
-        if self.version == 'HTTP/1.0':
+        if self.version == b'HTTP/1.0':
             self.keep_alive = False
 
     def has_body(self):
@@ -583,11 +584,11 @@ class ResponseHeader(HTTPHeader):
         return True
 
     def write_decoded_start(self, buf):
-        buf.extend('%s %d %s\r\n' % (self.version, self.code, self.phrase))
+        buf.extend(self.version + b' ' + str(self.code).encode('ascii') + b' ' + self.phrase + b'\r\n')
 
 
 class RequestMessage(HTTPMessage):
-    CONTENT_TYPE = "%s;msgtype=request" % HTTPMessage.CONTENT_TYPE
+    CONTENT_TYPE = HTTPMessage.CONTENT_TYPE + b";msgtype=request"
 
     def __init__(self, ignore_headers=()):
         HTTPMessage.__init__(self,
@@ -595,7 +596,7 @@ class RequestMessage(HTTPMessage):
 
 
 class ResponseMessage(HTTPMessage):
-    CONTENT_TYPE = "%s;msgtype=response" % HTTPMessage.CONTENT_TYPE
+    CONTENT_TYPE = HTTPMessage.CONTENT_TYPE + b";msgtype=response"
 
     def __init__(self, request, ignore_headers=()):
         self.interim = []
@@ -681,12 +682,12 @@ class HTTP09Response(HTTPMessage):
 
     def get_message(self):
         """Returns the contents of the input buffer."""
-        return str(self.buffer)
+        return bytes(self.buffer)
 
     def get_decoded_message(self):
         """Return the input stream reconstructed from the parsed
         data."""
-        return str(self.buffer)
+        return bytes(self.buffer)
 
     def write_decoded_message(self, buf):
         """Writes the parsed data to the buffer passed."""
@@ -694,7 +695,7 @@ class HTTP09Response(HTTPMessage):
 
     def get_body(self):
         """Returns the body of the HTTP message."""
-        return str(self.buffer)
+        return bytes(self.buffer)
 
     def write_body(self, buf):
         buf.extend(self.buffer)

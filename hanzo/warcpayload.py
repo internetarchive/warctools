@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import os
 import sys
-import httplib
+try:
+    from http.client import HTTPResponse
+except ImportError:
+    from httplib import HTTPResponse
+
 
 from optparse import OptionParser
 from contextlib import closing
@@ -30,26 +36,31 @@ def dump_payload_from_file(filename, offset=None, length=None):
         return dump_payload_from_stream(fh)
 
 def dump_payload_from_stream(fh):
+    try: # python3
+        out = sys.stdout.buffer
+    except AttributeError: # python2
+        out = sys.stdout
+
     for (offset, record, errors) in fh.read_records(limit=1, offsets=False):
         if record:
             if (record.type == WarcRecord.RESPONSE 
-                    and record.content_type.startswith('application/http')):
+                    and record.content_type.startswith(b'application/http')):
                 f = FileHTTPResponse(record.content_file)
                 f.begin()
             else:
                 f = record.content_file
 
             buf = f.read(8192) 
-            while buf != '':
-                sys.stdout.write(buf)
+            while buf != b'':
+                out.write(buf)
                 buf = f.read(8192)
 
         elif errors:
-            print >> sys.stderr, "warc errors at %s:%d"%(name, offset if offset else 0)
+            print("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
             for e in errors:
-                print '\t', e
+                print('\t', e)
 
-class FileHTTPResponse(httplib.HTTPResponse):
+class FileHTTPResponse(HTTPResponse):
     """HTTPResponse subclass that reads from the supplied fileobj instead of
     from a socket."""
 
@@ -64,7 +75,7 @@ class FileHTTPResponse(httplib.HTTPResponse):
         self.strict = strict
         self._method = method
 
-        self.msg = None
+        self.headers = self.msg = None
 
         # from the Status-Line of the response
         self.version = 'UNKNOWN' # HTTP-Version

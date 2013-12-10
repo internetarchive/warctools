@@ -5,7 +5,7 @@ archive_types = []
 def is_gzip_file(file_handle):
     signature = file_handle.read(2)
     file_handle.seek(-len(signature),1)
-    return signature == '\x1f\x8b'
+    return signature == b'\x1f\x8b'
 
 def guess_record_type(file_handle):
     offset = file_handle.tell()

@@ -14,12 +14,14 @@ class MixedParser(ArchiveParser):
         self.arc = ArcParser()
         self.warc = WarcParser()
 
-    def parse(self, stream, offset=None):
-        line = stream.readline()
+    def parse(self, stream, offset=None, line=None):
+        if line is None:
+            line = stream.readline()
+
         while line:
-            if line.startswith('WARC'):
+            if line.startswith(b'WARC'):
                 return self.warc.parse(stream, offset, line=line)
-            elif line not in ('\n','\r\n','\r'):
+            elif line not in (b'\n',b'\r\n',b'\r'):
                 return self.arc.parse(stream, offset, line=line)
 
             line = stream.readline()

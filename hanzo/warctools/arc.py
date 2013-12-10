@@ -12,20 +12,20 @@ from hanzo.warctools.archive_detect import register_record_type
 #Archive-length<nl> 
 # 
 @ArchiveRecord.HEADERS(
-    URL = 'URL',
-    IP = 'IP-address',
-    DATE = 'Archive-date',
-    CONTENT_TYPE = 'Content-type',
-    CONTENT_LENGTH = 'Archive-length',
-    RESULT_CODE = 'Result-code',
-    CHECKSUM = 'Checksum',
-    LOCATION = 'Location',
-    OFFSET = 'Offset',
-    FILENAME = 'Filename',
+    URL = b'URL',
+    IP = b'IP-address',
+    DATE = b'Archive-date',
+    CONTENT_TYPE = b'Content-type',
+    CONTENT_LENGTH = b'Archive-length',
+    RESULT_CODE = b'Result-code',
+    CHECKSUM = b'Checksum',
+    LOCATION = b'Location',
+    OFFSET = b'Offset',
+    FILENAME = b'Filename',
 )
 class ArcRecord(ArchiveRecord):
 
-    TRAILER = '\n'  # an ARC record is trailed by single unix newline
+    TRAILER = b'\n'  # an ARC record is trailed by single unix newline
 
     """Represents a record in an arc file."""
     def __init__(self, headers=None, content=None, errors=None):
@@ -33,7 +33,7 @@ class ArcRecord(ArchiveRecord):
 
     @property
     def type(self):
-        return "response"
+        return b"response"
 
     def _write_to(self, out, nl):
         #TODO: empty method?
@@ -54,11 +54,11 @@ class ArcRecordHeader(ArcRecord):
 
     @property
     def type(self):
-        return "filedesc"
+        return b"filedesc"
 
     def raw(self):
         """Return the raw representation of this record."""
-        return "".join(self.raw_headers) + self.content[1]
+        return b"".join(self.raw_headers) + self.content[1]
 
 def rx(pat):
     """Helper function to compile a regular expression with the IGNORECASE
@@ -66,9 +66,9 @@ def rx(pat):
     return re.compile(pat, flags=re.IGNORECASE)
 
 nl_rx = rx('^\r\n|\r|\n$')
-length_rx = rx('^%s$' % ArcRecord.CONTENT_LENGTH) #pylint: disable-msg=E1101
-type_rx = rx('^%s$' % ArcRecord.CONTENT_TYPE)     #pylint: disable-msg=E1101
-SPLIT = re.compile(r'\b\s|\s\b').split
+length_rx = rx(b'^' + ArcRecord.CONTENT_LENGTH + b'$') #pylint: disable-msg=E1101
+type_rx = rx(b'^' + ArcRecord.CONTENT_TYPE + b'$')     #pylint: disable-msg=E1101
+SPLIT = re.compile(br'\b\s|\s\b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
@@ -100,7 +100,7 @@ class ArcParser(ArchiveParser):
                 return (None, (), offset)
             line = stream.readline()
 
-        if line.startswith('filedesc:'):
+        if line.startswith(b'filedesc:'):
             raw_headers = []
             raw_headers.append(line)
             # read headers named in body of record
@@ -139,7 +139,7 @@ class ArcParser(ArchiveParser):
                                      raw_headers=raw_headers)
         else:
             if not self.headers:
-                raise StandardError('missing filedesc')
+                raise Exception('missing filedesc')
             headers = self.parse_header_list(line)
             content_type, content_length, errors = \
                 self.get_content_headers(headers)
@@ -158,7 +158,7 @@ class ArcParser(ArchiveParser):
 
     def parse_header_list(self, line):
         # some people use ' ' as the empty value. lovely.
-        line = line.rstrip('\r\n')
+        line = line.rstrip(b'\r\n')
         values = SPLIT(line)
         if len(self.headers) != len(values):
             if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
@@ -168,9 +168,9 @@ class ArcParser(ArchiveParser):
                 values = SPLIT(line, len(self.headers)-1)
 
         if len(self.headers) != len(values):
-            raise StandardError('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
+            raise Exception('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
                 
-        return zip(self.headers, values)
+        return list(zip(self.headers, values))
 
 
     @staticmethod
@@ -194,4 +194,4 @@ class ArcParser(ArchiveParser):
         return content_type, content_length, errors
 
 
-register_record_type(re.compile('^filedesc://'), ArcRecord)
+register_record_type(re.compile(br'^filedesc://'), ArcRecord)

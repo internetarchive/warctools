@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """warcvalid - check a warc is ok"""
 
+from __future__ import print_function
+
 import os
 import sys
 
@@ -35,19 +37,19 @@ def main(argv):
 
             for (offset, record, errors) in fh.read_records(limit=None):
                 if errors:
-                    print  >> sys.stderr, "warc errors at %s:%d"%(name, offset)
-                    print >> sys.stderr,  errors
+                    print("warc errors at %s:%d"%(name, offset), file=sys.stderr)
+                    print(errors, file=sys.stderr)
                     correct=False
 
                     break
                 elif record is not None and record.validate(): # ugh name, returns errorsa
-                    print  >> sys.stderr, "warc errors at %s:%d"%(name, offset)
-                    print >> sys.stderr, record.validate()
+                    print("warc errors at %s:%d"%(name, offset), file=sys.stderr)
+                    print(record.validate(), file=sys.stderr)
                     correct=False
                     break
                 
 
-    except StandardError, e:
+    except Exception as e:
         correct=False
     finally:
         if fh: fh.close()

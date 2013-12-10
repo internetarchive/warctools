@@ -24,7 +24,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
         record_class = guess_record_type(file_handle)
 
     if record_class == None:
-        raise StandardError('Failed to guess compression')
+        raise Exception('Failed to guess compression')
 
     record_parser = record_class.make_parser()
 
@@ -67,7 +67,7 @@ class RecordStream(object):
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
         nrecords = 0
-        while nrecords < limit or limit is None:
+        while limit is None or nrecords < limit:
             offset, record, errors = self._read_record(offsets)
             nrecords += 1
             yield (offset, record, errors)
@@ -81,7 +81,7 @@ class RecordStream(object):
                 yield record
             elif errors:
                 error_str = ",".join(str(error) for error in errors)
-                raise StandardError("Errors while decoding %s" % error_str)
+                raise Exception("Errors while decoding %s" % error_str)
             else:
                 break
 
@@ -148,6 +148,12 @@ class RecordStream(object):
 
         return self._read(read_size)
 
+    # XXX dumb implementation to support python3 http.client
+    def readinto(self, b):
+        tmp = self.read(count=len(b))
+        b[:len(tmp)] = tmp
+        return len(tmp)
+
     def readline(self, maxlen=None):
         """Safe readline for reading content, will not read past the end of the
         payload, assuming self.bytes_to_eoc is set. The record's trailing
@@ -180,14 +186,21 @@ class GeeZipFile(gzip.GzipFile):
 
     def __init__(self, filename=None, mode=None,
                  compresslevel=9, fileobj=None, mtime=None):
-        gzip.GzipFile.__init__(self, filename, mode, compresslevel, fileobj, mtime)
+        # ignore mtime for python 2.6
+        gzip.GzipFile.__init__(self, filename=filename, mode=mode, compresslevel=compresslevel, fileobj=fileobj)
         self.member_offset = None
 
     # hook in to the place we seem to be able to reliably get the raw gzip
     # member offset
     def _read(self, size=1024):
         if self._new_member:
-            self.member_offset = self.fileobj.tell()
+            try:
+                # works for python3.2
+                self.member_offset = self.fileobj.tell() - self.fileobj._length + (self.fileobj._read or 0)
+            except AttributeError:
+                # works for python2.7
+                self.member_offset = self.fileobj.tell()
+
         return gzip.GzipFile._read(self, size)
 
 class GzipRecordStream(RecordStream):

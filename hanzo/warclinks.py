@@ -1,12 +1,14 @@
 #!/usr/bin/python
+from __future__ import print_function
+
 import os
 import re
 import sys
 import os.path
 import logging
 
-from urlparse import urlparse, urlunparse
-from HTMLParser import HTMLParser, HTMLParseError
+from urllib.parse import urlparse, urlunparse
+from html.parser import HTMLParser, HTMLParseError
 from optparse import OptionParser
 from contextlib import closing
 
@@ -64,7 +66,7 @@ def extract_links_from_warcfh(fh):
                             yield ("".join(c for c in link if c not in '\n\r\t'))
 
 
-            except StandardError, e:
+            except Exception as e:
                 logging.warning("error in handling record "+str(e))
                 import traceback; traceback.print_exc()
 
@@ -83,11 +85,11 @@ try:
             html.make_links_absolute(base)
 
             for element, attribute, link, pos in html.iterlinks():
-                if isinstance(link, unicode):
+                if isinstance(link, str):
                     link = link.encode('utf-8', 'ignore')
                 yield link
 
-        except StandardError:
+        except Exception:
             logging.warning("(lxml) html parse error")
             import traceback; traceback.print_exc()
             
@@ -101,7 +103,7 @@ except ImportError:
             html.close()
             for link in html.get_abs_links():
                 yield link
-        except HTMLParseError,ex:
+        except HTMLParseError as ex:
             logging.warning("html parse error")
 
 
@@ -211,9 +213,9 @@ def main(argv):
         try:
             with closing(WarcRecord.open_archive(filename=warc, gzip="auto")) as fh:
                 for link in extract_links_from_warcfh(fh):
-                    print link
+                    print(link)
 
-        except StandardError as e:
+        except Exception as e:
             logging.error(str(e))
             ret -=1
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """warcdump - dump warcs in a slightly more humane format"""
 
+from __future__ import print_function
+
 import os
 import sys
 
@@ -39,15 +41,15 @@ def main(argv):
 def dump_archive(fh, name, offsets=True):
     for (offset, record, errors) in fh.read_records(limit=None, offsets=offsets):
         if record:
-            print "archive record at %s:%s"%(name,offset)
+            print("archive record at %s:%s"%(name,offset))
             record.dump(content=True)
         elif errors:
-            print "warc errors at %s:%d"%(name, offset if offset else 0)
+            print("warc errors at %s:%d"%(name, offset if offset else 0))
             for e in errors:
-                print '\t', e
+                print('\t', e)
         else:
-            print
-            print 'note: no errors encountered in tail of file'
+            print()
+            print('note: no errors encountered in tail of file')
 
 def run():
     sys.exit(main(sys.argv))
