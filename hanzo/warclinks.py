@@ -1,11 +1,11 @@
 #!/usr/bin/python
+from __future__ import print_function
+
 import os
 import re
 import sys
 import os.path
 import logging
-
-from six import print_
 
 from urllib.parse import urlparse, urlunparse
 from html.parser import HTMLParser, HTMLParseError
@@ -213,7 +213,7 @@ def main(argv):
         try:
             with closing(WarcRecord.open_archive(filename=warc, gzip="auto")) as fh:
                 for link in extract_links_from_warcfh(fh):
-                    print_(link)
+                    print(link)
 
         except Exception as e:
             logging.error(str(e))

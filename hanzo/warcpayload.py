@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import os
 import sys
 try:
@@ -54,9 +56,9 @@ def dump_payload_from_stream(fh):
                 buf = f.read(8192)
 
         elif errors:
-            print_("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
+            print("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
             for e in errors:
-                print_('\t', e)
+                print('\t', e)
 
 class FileHTTPResponse(HTTPResponse):
     """HTTPResponse subclass that reads from the supplied fileobj instead of

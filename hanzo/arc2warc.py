@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """arc2warc - convert one arc to a new warc"""
 
+from __future__ import print_function
+
 import os
 import sys
 import hashlib
@@ -10,8 +12,6 @@ import sys
 import os.path
 import datetime
 import socket
-
-from six import print_
 
 from optparse import OptionParser
 
@@ -220,10 +220,10 @@ def main(argv):
         try:
             for record in fh:
                 if isinstance(record, WarcRecord):
-                    print_('   WARC', record.url, file=sys.stderr)
+                    print('   WARC', record.url, file=sys.stderr)
                     warcs = [record]
                 else:
-                    print_('ARC    ', record.url, file=sys.stderr)
+                    print('ARC    ', record.url, file=sys.stderr)
                     warcs = arc.convert(record)
 
                 for warcrecord in warcs:

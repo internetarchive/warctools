@@ -10,7 +10,6 @@ setup(name='warctools',
     author='Thomas Figg',
     author_email='tef@warctools.twentygototen.org',
     packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
-    install_requires=['six'],
     test_suite="nose.collector",
     tests_require=["nose"],
     entry_points="""

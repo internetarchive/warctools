@@ -1,8 +1,8 @@
 """a skeleton class for archive records"""
 
+from __future__ import print_function
 from gzip import GzipFile
 import re
-from six import print_
 
 from hanzo.warctools.stream import open_record_stream
 
@@ -141,28 +141,28 @@ class ArchiveRecord(object):
         self.headers.append((name, value))
 
     def dump(self, content=True):
-        print_('Headers:')
+        print('Headers:')
         for (h, v) in self.headers:
-            print_('\t%s:%s' % (h.decode('latin1'), v.decode('latin1')))
+            print('\t%s:%s' % (h.decode('latin1'), v.decode('latin1')))
         if content and self.content:
-            print_('Content Headers:')
+            print('Content Headers:')
             content_type, content_body = self.content
-            print_('\t' + self.CONTENT_TYPE.decode('latin1'), ':', content_type.decode('latin1'))
-            print_('\t' + self.CONTENT_LENGTH.decode('latin1'), ':', len(content_body))
-            print_('Content:')
+            print('\t' + self.CONTENT_TYPE.decode('latin1'), ':', content_type.decode('latin1'))
+            print('\t' + self.CONTENT_LENGTH.decode('latin1'), ':', len(content_body))
+            print('Content:')
             ln = min(1024, len(content_body))
             abbr_strp_content = strip.sub(lambda x: ('\\x%00X' % ord(x.group())).encode('ascii'), content_body[:ln])
-            print_('\t' + abbr_strp_content.decode('ascii'))
-            print_('\t...')
-            print_()
+            print('\t' + abbr_strp_content.decode('ascii'))
+            print('\t...')
+            print()
         else:
-            print_('Content: none')
-            print_()
-            print_()
+            print('Content: none')
+            print()
+            print()
         if self.errors:
-            print_('Errors:')
+            print('Errors:')
             for e in self.errors:
-                print_('\t' + e)
+                print('\t' + e)
 
     def write_to(self, out, newline=b'\x0D\x0A', gzip=False):
         if self.content_file is not None:

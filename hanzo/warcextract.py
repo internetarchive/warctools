@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 """warcextract - dump warc record context to standard out"""
 
+from __future__ import print_function
+
 import os
 import sys
 
 import sys
 import os.path
-
-from six import print_
 
 from optparse import OptionParser
 from contextlib import closing
@@ -55,9 +55,9 @@ def dump_record(fh, out):
         if record:
             out.write(record.content[1])
         elif errors:
-            print_("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
+            print("warc errors at %s:%d"%(name, offset if offset else 0), file=sys.stderr)
             for e in errors:
-                print_('\t', e)
+                print('\t', e)
         break # only use one (I'm terrible)
 
 
