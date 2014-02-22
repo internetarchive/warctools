@@ -20,6 +20,7 @@ parser.add_option("-U", "--url", dest="url",action="store_true", help="match on 
 parser.add_option("-T", "--type", dest="type",action="store_true", help="match on (warc) record type")
 parser.add_option("-C", "--content-type", dest="content_type",action="store_true", help="match on (warc) record content type")
 parser.add_option("-H", "--http-content-type", dest="http_content_type",action="store_true", help="match on http payload content type")
+parser.add_option("-D", "--warc-date", dest="warc_date",action="store_true", help="match on WARC-Date header")
 parser.add_option("-L", "--log-level", dest="log_level", help="log level(ignored)")
 
 parser.set_defaults(output_directory=None, limit=None, log_level="info", invert=False, url=None, content_type=None, type=None)
@@ -79,7 +80,6 @@ def filter_archive(fh, options, pattern, out):
         for record in fh:
             if options.url:
                 if bool(record.url and pattern.search(record.url)) ^ invert :
-
                     record.write_to(out)
 
             elif options.type:
@@ -96,6 +96,10 @@ def filter_archive(fh, options, pattern, out):
 
                     if bool(content_type and pattern.search(content_type)) ^ invert:
                         record.write_to(out)
+
+            elif options.warc_date:
+                if bool(record.date and pattern.search(record.date)) ^ invert:
+                    record.write_to(out)
 
             else:
                 found = False
