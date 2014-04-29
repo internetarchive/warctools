@@ -50,6 +50,7 @@ def main(argv):
                 
 
     except Exception as e:
+        print("Exception: %s"%(str(e)), file=sys.stderr)
         correct=False
     finally:
         if fh: fh.close()
