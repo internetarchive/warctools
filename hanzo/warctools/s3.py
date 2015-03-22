@@ -1,9 +1,9 @@
 try:
     from urllib.parse import urlparse
 except ImportError:
-    import urlparse
+    from urlparse import urlparse
 
-from io import StringIO
+from io import BytesIO as StringIO
 
 try:
     from boto.s3.connection import S3Connection
