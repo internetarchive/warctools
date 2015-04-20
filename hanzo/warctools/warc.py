@@ -239,7 +239,7 @@ class WarcParser(ArchiveParser):
             ### We do this because we don't want to read large records into memory,
             ### since this was exhasting memory and crashing for large payloads.
             sha1_digest = None
-            if ('response' == record.type
+            if ('response' == record.type and content_type
                     # mimetype parsing borrowed from email.message._splitparam
                     and 'application/http' == content_type.partition(';')[0].strip()
                     and 'msgtype=response' == content_type.partition(';')[2].strip()):
