@@ -91,7 +91,7 @@ class HTTPMessage(object):
         if self.mode == 'incomplete':
             return 0, None
 
-    def feed(self, text):
+    def feed(self, text, record_length):
         """Push more text from the input stream into the parser."""
         if text and self.mode == 'start':
             text = self.feed_start(text)
@@ -106,6 +106,13 @@ class HTTPMessage(object):
                         self.body_reader = ChunkReader()
                     else:
                         length = self.header.body_length()
+
+                        # TODO it would be nicer to use the content length
+                        # info. But converting to gzip and reading again is
+                        # probably not a great idea. Any further input is
+                        # greatly appreciated :) .
+                        if str(self.header.encoding).endswith('gzip'):
+                            length = len(text)
                         if length is not None:
                             self.body_reader = LengthReader(length)
                             self.body_chunks = [(self.offset, length)]
@@ -117,7 +124,6 @@ class HTTPMessage(object):
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
-                #print >> sys.stderr, 'feeding', text[:50]
                 try:
                     text = self.body_reader.feed(self, text)
                 except BrokenChunks:
@@ -611,15 +617,15 @@ class ResponseMessage(HTTPMessage):
     def code(self):
         return self.header.code
 
-    def feed(self, text):
-        text = HTTPMessage.feed(self, text)
+    def feed(self, text, record_length=None):
+        text = HTTPMessage.feed(self, text, record_length)
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
             self.body_chunks = []
             self.mode = 'start'
             self.body_reader = None
-            text = HTTPMessage.feed(self, text)
+            text = HTTPMessage.feed(self, text, record_length)
         return text
 
     def as_http09(self):
