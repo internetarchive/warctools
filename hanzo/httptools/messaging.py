@@ -9,8 +9,11 @@ Missing:
     comma parsing/header folding
 
 """
-
+from __future__ import print_function
+from gzip import GzipFile
 import re
+import StringIO
+import sys
 import zlib
 
 
@@ -91,7 +94,7 @@ class HTTPMessage(object):
         if self.mode == 'incomplete':
             return 0, None
 
-    def feed(self, text, record_length):
+    def feed(self, text):
         """Push more text from the input stream into the parser."""
         if text and self.mode == 'start':
             text = self.feed_start(text)
@@ -106,15 +109,13 @@ class HTTPMessage(object):
                         self.body_reader = ChunkReader()
                     else:
                         length = self.header.body_length()
-
-                        # TODO it would be nicer to use the content length
-                        # info. But converting to gzip and reading again is
-                        # probably not a great idea. Any further input is
-                        # greatly appreciated :) .
-                        if str(self.header.encoding).endswith('gzip'):
-                            length = len(text)
                         if length is not None:
-                            self.body_reader = LengthReader(length)
+                            if str(self.header.encoding).endswith('gzip'):
+                                self.body_reader = ZipLengthReader(length,
+                                                                   text)
+                            else:
+                                self.body_reader = LengthReader(length)
+                            length = self.body_reader.remaining
                             self.body_chunks = [(self.offset, length)]
                             if length == 0:
                                 self.mode = 'end'
@@ -362,6 +363,38 @@ class LengthReader(object):
 
     def feed(self, parser, text):
         if self.remaining > 0:
+            self.remaining, text = parser.feed_length(text, self.remaining)
+        if self.remaining <= 0:
+            parser.mode = 'end'
+        return text
+
+
+class ZipLengthReader(LengthReader):
+    """
+    Tries to read the body as gzip. In case that fails, it disregards the
+    Content-Length and reads it normally
+    """
+    def __init__(self, length, text):
+        # TODO test if this works with gzipped responses in WARC
+        try:
+            self._file = GzipFile(fileobj=StringIO.StringIO(text), mode='rb')
+            self._text = self._file.read()
+            super(ZipLengthReader, self).__init__(length)
+        except IOError:
+            self._file = None
+            print(('warning: Content-Encoding should be gzip, but the body is'
+                  'uncompressed'), file=sys.stderr)
+            super(ZipLengthReader, self).__init__(len(text))
+
+    def __del__(self):
+        if self._file:
+            self._file.close()
+
+    def feed(self, parser, text):
+        """Parse the body according to length"""
+        if self.remaining > 0:
+            if self._file:
+                text = self._text
             self.remaining, text = parser.feed_length(text, self.remaining)
         if self.remaining <= 0:
             parser.mode = 'end'
@@ -617,15 +650,15 @@ class ResponseMessage(HTTPMessage):
     def code(self):
         return self.header.code
 
-    def feed(self, text, record_length=None):
-        text = HTTPMessage.feed(self, text, record_length)
+    def feed(self, text):
+        text = HTTPMessage.feed(self, text)
         if self.complete() and self.header.code == Codes.Continue:
             self.interim.append(self.header)
             self.header = ResponseHeader(self.header.request)
             self.body_chunks = []
             self.mode = 'start'
             self.body_reader = None
-            text = HTTPMessage.feed(self, text, record_length)
+            text = HTTPMessage.feed(self, text)
         return text
 
     def as_http09(self):
