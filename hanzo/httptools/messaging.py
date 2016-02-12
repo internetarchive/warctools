@@ -9,10 +9,8 @@ Missing:
     comma parsing/header folding
 
 """
-from __future__ import print_function
 from gzip import GzipFile
 import re
-import sys
 import zlib
 try:
     from StringIO import StringIO
@@ -374,19 +372,17 @@ class LengthReader(object):
 
 class ZipLengthReader(LengthReader):
     """
-    Tries to read the body as gzip. In case that fails, it disregards the
-    Content-Length and reads it normally
+    Tries to read the body as gzip according to length. In case that fails, it
+    disregards the Content-Length and reads it normally.
     """
     def __init__(self, length, text):
         # TODO test if this works with gzipped responses in WARC
         try:
-            self._file = GzipFile(fileobj=StringIO(text), mode='rb')
+            self._file = GzipFile(fileobj=StringIO(text[:length]), mode='rb')
             self._text = self._file.read()
-            super(ZipLengthReader, self).__init__(length)
+            super(ZipLengthReader, self).__init__(len(self._text))
         except IOError:
             self._file = None
-            print(('warning: Content-Encoding should be gzip, but the body is'
-                  'uncompressed'), file=sys.stderr)
             super(ZipLengthReader, self).__init__(len(text))
 
     def __del__(self):
@@ -394,7 +390,7 @@ class ZipLengthReader(LengthReader):
             self._file.close()
 
     def feed(self, parser, text):
-        """Parse the body according to length"""
+        """Parse the body according to remaining length"""
         if self.remaining > 0:
             if self._file:
                 text = self._text
