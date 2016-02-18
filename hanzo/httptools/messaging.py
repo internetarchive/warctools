@@ -15,7 +15,7 @@ import zlib
 try:
     from StringIO import StringIO
 except ImportError:
-    from io import StringIO
+    from io import BytesIO as StringIO
 
 
 class ParseError(Exception):
@@ -111,7 +111,9 @@ class HTTPMessage(object):
                     else:
                         length = self.header.body_length()
                         if length is not None:
-                            if str(self.header.encoding).endswith('gzip'):
+                            encoding = self.header.encoding
+
+                            if encoding and encoding.endswith(b'gzip'):
                                 self.body_reader = ZipLengthReader(length,
                                                                    text)
                             else:

@@ -263,5 +263,72 @@ class TestTwoPartStatus(unittest.TestCase):
         self.assertEqual(p.code, 404)
         self.assertEqual(p.header.version, b"HTTP/1.1")
 
+
+class PostTestPseudoGzipped(unittest.TestCase):
+    """Tests the parser with a POST request with gzip encoding."""
+    post_request = b"\r\n".join([
+        b"GET / HTTP/1.1",
+        b"Host: example.org",
+        b"",
+        b"",
+        b"",
+    ])
+    post_response = b"\r\n".join([
+        b"HTTP/1.1 200 OK",
+        b"Host: example.org",
+        b"Content-Encoding: gzip",
+        b"Content-Length: 7",
+        b"",
+        b"text",
+        b""
+    ])
+
+    def runTest(self):
+        """Tests parsing of POST response."""
+        request = RequestMessage()
+        response = ResponseMessage(request)
+        text = response.feed(self.post_response)
+
+        self.assertEqual(text, b'')
+        self.assertTrue(response.complete())
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.header.version, b"HTTP/1.1")
+
+
+class PostTestGzipped(unittest.TestCase):
+    """Tests the parser with a POST request with gzip encoding."""
+    post_request = b"\r\n".join([
+        b"GET / HTTP/1.1",
+        b"Host: example.org",
+        b"",
+        b"",
+        b"",
+    ])
+
+    def runTest(self):
+        """Tests parsing of POST response."""
+        response_list = [
+            b"HTTP/1.1 200 OK",
+            b"Host: example.org",
+            b"Content-Encoding: gzip",
+            b"Content-Length: 30",
+            b""
+        ]
+        gfile = open('hanzo/httptools/tests/test.gz', 'rb')
+
+        response_list.append(gfile.read())
+        gfile.close()
+
+        self.post_response = b"\r\n".join(response_list)
+        request = RequestMessage()
+        response = ResponseMessage(request)
+        text = response.feed(self.post_response)
+
+        self.assertEqual(text, b'')
+        self.assertTrue(response.complete())
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.header.version, b"HTTP/1.1")
+
+
 if __name__ == '__main__':
     unittest.main()
