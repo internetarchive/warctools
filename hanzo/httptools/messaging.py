@@ -12,10 +12,7 @@ Missing:
 from gzip import GzipFile
 import re
 import zlib
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import BytesIO as StringIO
+from io import BytesIO
 
 
 class ParseError(Exception):
@@ -380,7 +377,7 @@ class ZipLengthReader(LengthReader):
     def __init__(self, length, text):
         # TODO test if this works with gzipped responses in WARC
         try:
-            self._file = GzipFile(fileobj=StringIO(text[:length]), mode='rb')
+            self._file = GzipFile(fileobj=BytesIO(text[:length]), mode='rb')
             self._text = self._file.read()
             super(ZipLengthReader, self).__init__(len(self._text))
         except IOError:
