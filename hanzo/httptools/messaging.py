@@ -9,9 +9,10 @@ Missing:
     comma parsing/header folding
 
 """
-
+from gzip import GzipFile
 import re
 import zlib
+from io import BytesIO
 
 
 class ParseError(Exception):
@@ -107,7 +108,14 @@ class HTTPMessage(object):
                     else:
                         length = self.header.body_length()
                         if length is not None:
-                            self.body_reader = LengthReader(length)
+                            encoding = self.header.encoding
+
+                            if encoding and encoding.endswith(b'gzip'):
+                                self.body_reader = ZipLengthReader(length,
+                                                                   text)
+                            else:
+                                self.body_reader = LengthReader(length)
+                            length = self.body_reader.remaining
                             self.body_chunks = [(self.offset, length)]
                             if length == 0:
                                 self.mode = 'end'
@@ -117,7 +125,6 @@ class HTTPMessage(object):
 
         if text and self.mode == 'body':
             if self.body_reader is not None:
-                #print >> sys.stderr, 'feeding', text[:50]
                 try:
                     text = self.body_reader.feed(self, text)
                 except BrokenChunks:
@@ -356,6 +363,36 @@ class LengthReader(object):
 
     def feed(self, parser, text):
         if self.remaining > 0:
+            self.remaining, text = parser.feed_length(text, self.remaining)
+        if self.remaining <= 0:
+            parser.mode = 'end'
+        return text
+
+
+class ZipLengthReader(LengthReader):
+    """
+    Tries to read the body as gzip according to length. In case that fails, it
+    disregards the Content-Length and reads it normally.
+    """
+    def __init__(self, length, text):
+        # TODO test if this works with gzipped responses in WARC
+        try:
+            self._file = GzipFile(fileobj=BytesIO(text[:length]), mode='rb')
+            self._text = self._file.read()
+            super(ZipLengthReader, self).__init__(len(self._text))
+        except IOError:
+            self._file = None
+            super(ZipLengthReader, self).__init__(len(text))
+
+    def __del__(self):
+        if self._file:
+            self._file.close()
+
+    def feed(self, parser, text):
+        """Parse the body according to remaining length"""
+        if self.remaining > 0:
+            if self._file:
+                text = self._text
             self.remaining, text = parser.feed_length(text, self.remaining)
         if self.remaining <= 0:
             parser.mode = 'end'

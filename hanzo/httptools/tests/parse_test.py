@@ -263,5 +263,56 @@ class TestTwoPartStatus(unittest.TestCase):
         self.assertEqual(p.code, 404)
         self.assertEqual(p.header.version, b"HTTP/1.1")
 
+
+class TestPseudoGzipped(unittest.TestCase):
+    """Test parsing of a response with Content-Encoding:gzip declared, but
+    without the payload actually being gzipped (see #14)"""
+    post_response = b"\r\n".join([
+        b"HTTP/1.1 200 OK",
+        b"Host: example.org",
+        b"Content-Encoding: gzip",
+        b"Content-Length: 7",
+        b"",
+        b"text",
+        b""
+    ])
+
+    def runTest(self):
+        """Tests parsing the response."""
+        request = RequestMessage()
+        response = ResponseMessage(request)
+        text = response.feed(self.post_response)
+
+        self.assertEqual(text, b'')
+        self.assertTrue(response.complete())
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.header.version, b"HTTP/1.1")
+
+
+class TestGzipped(unittest.TestCase):
+    """Test parsing of a response with Content-Encoding:gzip declared
+    and an actually gzipped payload (see #14)"""
+    post_response = b"\r\n".join([
+        b"HTTP/1.1 200 OK",
+        b"Host: example.org",
+        b"Content-Encoding: gzip",
+        b"Content-Length: 30",
+        b"",
+        (b"\x1f\x8b\x08\x08G\xb2\xc5V\x00\x03test\x00+I\xad(\xe1\x02\x00'"
+         b"\xda\xec7\x05\x00\x00\x00")
+    ])
+
+    def runTest(self):
+        """Tests parsing of the response."""
+        request = RequestMessage()
+        response = ResponseMessage(request)
+        text = response.feed(self.post_response)
+
+        self.assertEqual(text, b'')
+        self.assertTrue(response.complete())
+        self.assertEqual(response.code, 200)
+        self.assertEqual(response.header.version, b"HTTP/1.1")
+
+
 if __name__ == '__main__':
     unittest.main()
