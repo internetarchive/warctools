@@ -67,7 +67,11 @@ class RecordStream(object):
         Record is an object and errors is an empty list
         or record is none and errors is a list"""
         nrecords = 0
+        record = None
         while limit is None or nrecords < limit:
+            if record:
+                # invalidate content_file of previous record
+                record.content_file = None
             offset, record, errors = self._read_record(offsets)
             nrecords += 1
             yield (offset, record, errors)
@@ -75,7 +79,11 @@ class RecordStream(object):
                 break
 
     def __iter__(self):
+        record = None
         while True:
+            if record:
+                # invalidate content_file of previous record
+                record.content_file = None
             _, record, errors = self._read_record(offsets=False)
             if record:
                 yield record
