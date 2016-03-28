@@ -4,6 +4,7 @@ import gzip
 import re
 
 from hanzo.warctools.archive_detect import is_gzip_file, guess_record_type
+from hanzo.warctools.gz import MultiMemberGzipReader
 
 def open_record_stream(record_class=None, filename=None, file_handle=None,
                        mode="rb", gzip="auto", offset=None, length=None):
@@ -134,7 +135,7 @@ class RecordStream(object):
         else:
             result = self.fh.read()
 
-        if self.bytes_to_eoc is not None:
+        if result and self.bytes_to_eoc is not None:
             self.bytes_to_eoc -= len(result)
 
         return result
@@ -188,59 +189,25 @@ class RecordStream(object):
 
 CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
 
-class GeeZipFile(gzip.GzipFile):
-    """Extends gzip.GzipFile to remember self.member_offset, the raw file
-    offset of the current gzip member."""
-
-    def __init__(self, filename=None, mode=None,
-                 compresslevel=9, fileobj=None, mtime=None):
-        # ignore mtime for python 2.6
-        gzip.GzipFile.__init__(self, filename=filename, mode=mode, compresslevel=compresslevel, fileobj=fileobj)
-        self.member_offset = None
-
-    # hook in to the place we seem to be able to reliably get the raw gzip
-    # member offset
-    def _read(self, size=1024):
-        if self._new_member:
-            try:
-                # works for python3.2
-                self.member_offset = self.fileobj.tell() - self.fileobj._length + (self.fileobj._read or 0)
-            except AttributeError:
-                # works for python2.7
-                self.member_offset = self.fileobj.tell()
-
-        return gzip.GzipFile._read(self, size)
-
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped
     archive records"""
     def __init__(self, file_handle, record_parser):
-        RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
         self.raw_fh = file_handle
+        self.multi_member_gzip_reader = MultiMemberGzipReader(self.raw_fh)
+        RecordStream.__init__(self, None, record_parser)
 
     def _read_record(self, offsets):
-        if self.bytes_to_eoc is not None:
-            self._skip_to_eoc()  # skip to end of previous record
         self.bytes_to_eoc = None
-
-        # handle any sort of valid or invalid record terminator
-        while True:
-            line = self.fh.readline()
-            if not re.match(br'^[\r\n]+$', line):
-                break
-
-        record, errors, _offset = \
-            self.record_parser.parse(self, offset=None, line=line)
-
+        self.fh = self.multi_member_gzip_reader.next()
+        record, errors, _ = self.record_parser.parse(stream=self, offset=None)
         offset = self.fh.member_offset
-
         return offset, record, errors
 
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
         self.raw_fh.seek(offset, pos)
-        # trick to avoid closing and recreating GzipFile, does it always work?
-        self.fh._new_member = True
+        self.fh = MultiMemberGzipReader(raw_fh)
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""

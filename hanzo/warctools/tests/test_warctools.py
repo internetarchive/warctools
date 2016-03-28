@@ -12,6 +12,7 @@ except AttributeError:
 import tempfile
 import gzip
 from hanzo import warctools, httptools
+from hanzo.warctools.gz import MultiMemberGzipReader
 
 try:
     from io import BytesIO
@@ -50,7 +51,7 @@ class ArcRecordTerminatorTest(unittest.TestCase):
             self._run_checks(fin, terminator, False)
         finally:
             fin.close()
-        
+
         fin = self._arc_gz(terminator)
         try:
             self._run_checks(fin, terminator, True)
@@ -98,7 +99,7 @@ class ArcRecordTerminatorTest(unittest.TestCase):
     def runTest(self):
         # anything works as long as it contains only \r and \n and ends with \n
         self._test_terminator(b'\n') # the good one
-        self._test_terminator(b'\r\n\r\n') 
+        self._test_terminator(b'\r\n\r\n')
         self._test_terminator(b'\r\n')
         self._test_terminator(b'\n\r\n')
         self._test_terminator(b'\n\n\r\n')
@@ -153,7 +154,7 @@ class WarcRecordTerminatorTest(unittest.TestCase):
             self._run_checks(fin, terminator, False)
         finally:
             fin.close()
-        
+
         fin = self._warc_gz(terminator)
         try:
             self._run_checks(fin, terminator, True)
@@ -360,6 +361,239 @@ class WarcWritingTest(unittest.TestCase):
             record.write_to(f, gzip=True)
         f.close()
 
+class MultiMemberGzipTest(unittest.TestCase):
+    GZ_0BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00'      # b''
+    GZ_1BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03K\x04\x00C\xbe\xb7\xe8\x01\x00\x00\x00'        # b'a'
+    GZ_2BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KL\x02\x00mH\x83\x9e\x02\x00\x00\x00'          # b'ab'
+    GZ_3BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJ\x06\x00\xc2A$5\x03\x00\x00\x00'            # b'abc
+    GZ_4BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJN\x01\x00\x11\xcd\x82\xed\x04\x00\x00\x00'  # b'abcd'
+    GZ_5BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJNI\x05\x00e\xd8\x87\x85\x05\x00\x00\x00'    # b'abcde'
+    GZ_6BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJNIM\x03\x00\xef9\x8eK\x06\x00\x00\x00'      # b'abcdef'
+    GZ_7BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJNIMK\x07\x00\xa6j*1\x07\x00\x00\x00'        # b'abcdefg'
+    GZ_8BYTE = b'\x1f\x8b\x08\x00%\xb6\xf1V\x00\x03KLJNIMK\xcf\x00\x00P*\xef\xae\x08\x00\x00\x00' # b'abcdefgh'
+    def test_small_members(self):
+        multimember = (self.GZ_0BYTE + self.GZ_1BYTE + self.GZ_2BYTE + self.GZ_3BYTE + self.GZ_4BYTE
+                       + self.GZ_5BYTE + self.GZ_6BYTE + self.GZ_7BYTE + self.GZ_8BYTE)
+        f = BytesIO(multimember)
+
+        g = MultiMemberGzipReader(f)
+
+        # empty gzip member
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'a')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'ab')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abc')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abcd')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abcde')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abcdef')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abcdefg')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        m = g.next()
+        self.assertTrue(isinstance(
+            m, MultiMemberGzipReader.GzipMemberReader))
+        self.assertEquals(m.readline(), b'abcdefgh')
+        self.assertEquals(m.readline(), b'')
+        self.assertEquals(m.readline(), b'')
+
+        self.assertRaises(StopIteration, g.next)
+        self.assertRaises(StopIteration, g.next)
+        self.assertRaises(StopIteration, g.next)
+
+    def test_one_member_long_lines(self):
+        # all the same length
+        line_length = 100000
+        with BytesIO() as f:
+            with gzip.GzipFile(fileobj=f, mode='wb') as g:
+                g.write(b'm' * line_length + b'\n')
+                g.write(b'm' * line_length + b'\n')
+                g.write(b'm' * line_length + b'\n')
+                g.write(b'm' * line_length + b'\n')
+                g.write(b'm' * line_length + b'\n')
+                g.write(b'm' * line_length + b'\n')
+            gz = f.getvalue()
+
+        member_count = 0
+        with BytesIO(gz) as f:
+            with MultiMemberGzipReader(f) as g:
+                for member in g:
+                    member_count += 1
+                    self.assertEquals(member.member_offset, 0)
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(),
+                                      b'm' * line_length + b'\n')
+                    self.assertEquals(member.readline(), b'')
+                    self.assertEquals(member.readline(), b'')
+                    self.assertEquals(member.readline(), b'')
+
+        self.assertEqual(member_count, 1)
+
+        # increasing lengths
+        line_length = 11
+        with BytesIO() as f:
+            with gzip.GzipFile(fileobj=f, mode='wb') as g:
+                while line_length < 500000:
+                    g.write(b'z' * line_length + b'\n')
+                    line_length *= 2
+            gz = f.getvalue()
+
+        f0 = BytesIO(gz)
+        g0 = gzip.GzipFile(fileobj=f0)
+
+        f1 = BytesIO(gz)
+        g1 = MultiMemberGzipReader(f1)
+        m1 = g1.next()
+
+        i = 0
+        while True:
+            l0 = g0.readline()
+            l1 = m1.readline()
+            self.assertEqual(l0, l1)
+            if not l0:
+                break
+
+        self.assertRaises(StopIteration, g1.next)
+
+    def test_large_members(self):
+        multimember = b''
+        line_length = 11
+        member_offsets = []
+        for n_lines in range(1, 6):
+            with BytesIO() as f:
+                with gzip.GzipFile(fileobj=f, mode='wb') as g:
+                    for n in range(n_lines):
+                        member_offsets.append(len(multimember))
+                        g.write(b'x' * line_length + b'\n')
+                        line_length *= 2
+                multimember += f.getvalue()
+        with BytesIO(multimember) as f:
+            with MultiMemberGzipReader(f) as g:
+                line_length = 11
+                member_count = 0
+                for member in g:
+                    line_count = 0
+                    member_count += 1
+                    for line in member:
+                        self.assertEquals(len(line), line_length + 1)
+                        line_length *= 2
+                        line_count += 1
+                    self.assertEquals(line_count, member_count)
+
+    def test_readline_with_size(self):
+        with BytesIO() as f:
+            with gzip.GzipFile(fileobj=f, mode='wb') as g:
+                g.write(b'x' * 80 + b'\n')
+                g.write(b'x' * 80 + b'\n')
+                g.write(b'x' * 80 + b'\n')
+            three_line_gz = f.getvalue()
+
+        with BytesIO(three_line_gz) as f:
+            with MultiMemberGzipReader(f) as g:
+                for m in g:
+                    self.assertEquals(m.readline(size=40), b'x' * 40)
+                    self.assertEquals(m.readline(size=80), b'x' * 40 + b'\n')
+                    self.assertEquals(m.readline(size=120), b'x' * 80 + b'\n')
+                    self.assertEquals(m.readline(size=120), b'x' * 80 + b'\n')
+                    self.assertEquals(m.readline(size=80), b'')
+
+    ### TODO ###
+    # def test_skip_ahead(self):
+    #     # XXX test skipping ahead to next member after reading
+    #     #  - no data
+    #     #  - some data
+    #     pass
+    # def test_read(self):
+    #     # XXX test read() with and without size
+    #     pass
+
+    # def test_unusual_gzip(self):
+    #     # XXX
+    #     # test with trailing null bytes
+    #     # test with various flags in header
+    #     # test with crazy long FNAME, FCOMMENT
+    #     pass
+
+    # def test_invalid_gzip(self):
+    #     # XXX
+    #     # test crc mismatch
+    #     # test end of stream in middle of
+    #     #  - magic
+    #     #  - various parts of gzip header
+    #     #  - data
+    #     #  - gzip footer
+    #     # test invalid
+    #     #  - magic
+    #     #  - gzip header
+    #     #  - data
+    #     #  - gzip footer
+    #     pass
+
+    # def test_bad_behavior(self):
+    #     # XXX
+    #     # test at different stages of decompression:
+    #     #  - reading from wrapped fileobj
+    #     #  - seeking in wrapped fileobj
+    #     #  - closing wrapped fileobj
+    #     pass
+
+    # def test_delim(self):
+    #     # XXX test GzipMemberReader._read_chunk() with multibyte delimiter
+    #     # with size parameter cutting off read in middle of multibyte delimiter
+    #     pass
 
 if __name__ == '__main__':
     unittest.main()
