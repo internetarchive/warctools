@@ -119,6 +119,11 @@ class ArcParser(ArchiveParser):
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
 
+            # raj: some v1 ARC files are incorrectly sending a v2 header names line
+            if arc_names_line == 'URL IP-address Archive-date Content-type Result-code Checksum Location Offset Filepath Archive-length\n':
+                if arc_version == '1 0 InternetArchive' and 5 == len(line.split(' ')):
+                    self.headers = ['URL', 'IP-address', 'Archive-date', 'Content-type', 'Archive-length']
+
             # now we have read header field in record body
             # we can extract the headers from the current record,
             # and read the length field
@@ -164,13 +169,13 @@ class ArcParser(ArchiveParser):
         return ()
 
     def parse_header_list(self, line):
-        values = SPLIT(line.strip())
+        values = line.strip().split(b' ')
         num_values = len(values)
 
         #raj: some headers contain urls with unescaped spaces
         if num_values > 5:
-            if re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[-4]) and re.match('^\d{14}$', values[-3]) and re.match('^\d+$', values[-1]):
-                values = ['%20'.join(values[0:-4]), values[-4], values[-3], values[-2], values[-1]]
+            if re.match(b'^(?:\d{1,3}\.){3}\d{1,3}$', values[-4]) and re.match('^\d{14}$', values[-3]) and re.match('^\d+$', values[-1]):
+                values = [b'%20'.join(values[0:-4]), values[-4], values[-3], values[-2], values[-1]]
                 num_values = len(values)
 
         if 4 == num_values:
@@ -179,7 +184,7 @@ class ArcParser(ArchiveParser):
         elif 5 == num_values:
             #normal case
             #raj: some old alexa arcs have ip-address and date transposed in the header
-            if re.match('^\d{14}$', values[1]) and re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
+            if re.match(b'^\d{14}$', values[1]) and re.match(b'^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
                 values[1], values[2] = values[2], values[1]
 
             return list(zip(self.headers, values))
