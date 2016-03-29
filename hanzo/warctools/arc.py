@@ -164,21 +164,32 @@ class ArcParser(ArchiveParser):
         return ()
 
     def parse_header_list(self, line):
-        # some people use ' ' as the empty value. lovely.
-        line = line.rstrip(b'\r\n')
-        values = SPLIT(line)
-        if len(self.headers) != len(values):
-            if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
-                # fencepost
-                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)-1))]
-            else:
-                values = SPLIT(line, len(self.headers)-1)
+        values = SPLIT(line.strip())
+        num_values = len(values)
 
-        if len(self.headers) != len(values):
-            raise Exception('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
+        #raj: some headers contain urls with unescaped spaces
+        if num_values > 5:
+            if re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[-4]) and re.match('^\d{14}$', values[-3]) and re.match('^\d+$', values[-1]):
+                values = ['%20'.join(values[0:-4]), values[-4], values[-3], values[-2], values[-1]]
+                num_values = len(values)
 
-        return list(zip(self.headers, values))
+        if 4 == num_values:
+            #raj: alexa arc files don't always have content-type in header
+            return list(zip(self.short_headers, values))
+        elif 5 == num_values:
+            #normal case
+            #raj: some old alexa arcs have ip-address and date transposed in the header
+            if re.match('^\d{14}$', values[1]) and re.match('^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
+                values[1], values[2] = values[2], values[1]
 
+            return list(zip(self.headers, values))
+        elif 6 == num_values:
+            #raj: some old alexa arcs have "content-type; charset" in the header
+            v = values[0:4]+values[5:]
+            v[3] = v[3].rstrip(';')
+            return list(zip(self.headers, v))
+        else:
+            raise Exception('invalid number of header fields')
 
     @staticmethod
     def get_content_headers(headers):
