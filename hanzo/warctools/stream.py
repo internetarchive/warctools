@@ -25,7 +25,7 @@ def open_record_stream(record_class=None, filename=None, file_handle=None,
         record_class = guess_record_type(file_handle)
 
     if record_class == None:
-        raise Exception('Failed to guess compression')
+        raise Exception('Failed to guess record type')
 
     record_parser = record_class.make_parser()
 
