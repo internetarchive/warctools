@@ -56,10 +56,6 @@ class ArchiveRecord(object):
         return self.get_header(self.TYPE)
 
     @property
-    def content_type(self):
-        return self.content[0]
-
-    @property
     def content_file(self):
         """
         File handle for streaming the payload.
@@ -103,15 +99,13 @@ class ArchiveRecord(object):
 
     @property
     def content_type(self):
-        """If self.content tuple was supplied, or has already been snarfed, or
-        we don't have a Content-Type header, return self.content[0]. Otherwise, 
-        return the value of the Content-Type header."""
-        if self._content is None:
-            content_type = self.get_header(self.CONTENT_TYPE)
-            if content_type is not None:
-                return content_type
-
-        return self.content[0]
+        """If self.content tuple was supplied, or has already been snarfed,
+        return self.content[0]. Otherwise, return the value of the Content-Type
+        header."""
+        if self._content:
+            return self._content[0]
+        else:
+            return self.get_header(self.CONTENT_TYPE)
 
     @property
     def content_length(self):
