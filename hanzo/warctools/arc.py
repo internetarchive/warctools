@@ -68,10 +68,6 @@ def rx(pat):
 nl_rx = rx('^\r\n|\r|\n$')
 length_rx = rx(b'^' + ArcRecord.CONTENT_LENGTH + b'$') #pylint: disable-msg=E1101
 type_rx = rx(b'^' + ArcRecord.CONTENT_TYPE + b'$')     #pylint: disable-msg=E1101
-#raj/noah: change the call to split below to only split on space (some arcs
-#have a \x0c formfeed character in the url)
-# SPLIT = re.compile(br'\b\s|\s\b').split
-SPLIT = re.compile(br'\b | \b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
