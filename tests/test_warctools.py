@@ -11,7 +11,7 @@ except AttributeError:
 
 import tempfile
 import gzip
-from hanzo import warctools, httptools
+from hanzo import warctools
 from hanzo.warctools.gz import MultiMemberGzipReader
 
 try:
@@ -275,7 +275,7 @@ class WarcWritingTest(unittest.TestCase):
                 record_id=b'<urn:uuid:00000000-0000-0000-0000-000000000000>',
                 warc_date=b'2013-11-15T00:00:00Z',
                 warc_type=warctools.WarcRecord.RESPONSE,
-                content_type=httptools.RequestMessage.CONTENT_TYPE)
+                content_type=warctools.WarcRecord.HTTP_RESPONSE_CONTENT_TYPE)
         return record
 
     def build_record_using_stream(self):
@@ -286,24 +286,45 @@ class WarcWritingTest(unittest.TestCase):
                 record_id=b'<urn:uuid:00000000-0000-0000-0000-000000000000>',
                 warc_date=b'2013-11-15T00:00:00Z',
                 warc_type=warctools.WarcRecord.RESPONSE,
-                content_type=httptools.RequestMessage.CONTENT_TYPE)
+                content_type=warctools.WarcRecord.HTTP_RESPONSE_CONTENT_TYPE)
         return record
 
+    RESPONSE_RECORD_1 = (
+        b'WARC/1.0\r\n'
+        b'WARC-Type: response\r\n'
+        b'WARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\n'
+        b'WARC-Date: 2013-11-15T00:00:00Z\r\n'
+        b'WARC-Target-URI: http://example.org/\r\n'
+        b'Content-Type: application/http;msgtype=response\r\n'
+        b'Content-Length: 23\r\n'
+        b'\r\n'
+        b'Luke, I am your payload\r\n'
+        b'\r\n')
+
+    RESPONSE_RECORD_2 = (
+        b'WARC/1.0\r\n'
+        b'WARC-Type: response\r\n'
+        b'WARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\n'
+        b'WARC-Date: 2013-11-15T00:00:00Z\r\n'
+        b'WARC-Target-URI: http://example.org/\r\n'
+        b'Content-Type: application/http;msgtype=response\r\n'
+        b'Content-Length: 27\r\n'
+        b'\r\n'
+        b'Shmuke, I gam four snayglob\r\n'
+        b'\r\n')
 
     def test_write_using_tuple(self):
         record = self.build_record_using_tuple()
 
         f = BytesIO()
         record.write_to(f)
-        self.assertEqual(f.getvalue(), 
-                b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        self.assertEqual(f.getvalue(), self.RESPONSE_RECORD_1)
         f.close()
 
         # should work again if we do it again
         f = BytesIO()
         record.write_to(f)
-        self.assertEqual(f.getvalue(), 
-                b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        self.assertEqual(f.getvalue(), self.RESPONSE_RECORD_1)
         f.close()
 
 
@@ -314,7 +335,7 @@ class WarcWritingTest(unittest.TestCase):
         record.write_to(f, gzip=True)
         f.seek(0)
         g = gzip.GzipFile(fileobj=f, mode='rb')
-        self.assertEqual(g.read(), b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        self.assertEqual(g.read(), self.RESPONSE_RECORD_1)
         g.close()
         f.close()
 
@@ -323,7 +344,7 @@ class WarcWritingTest(unittest.TestCase):
         record.write_to(f, gzip=True)
         f.seek(0)
         g = gzip.GzipFile(fileobj=f, mode='rb')
-        self.assertEqual(g.read(), b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 23\r\n\r\nLuke, I am your payload\r\n\r\n')
+        self.assertEqual(g.read(), self.RESPONSE_RECORD_1)
         g.close()
         f.close()
 
@@ -333,8 +354,7 @@ class WarcWritingTest(unittest.TestCase):
 
         f = BytesIO()
         record.write_to(f)
-        self.assertEqual(f.getvalue(), 
-                b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 27\r\n\r\nShmuke, I gam four snayglob\r\n\r\n')
+        self.assertEqual(f.getvalue(), self.RESPONSE_RECORD_2)
         f.close()
 
         # throws exception because record.content_file position has advanced
@@ -351,7 +371,7 @@ class WarcWritingTest(unittest.TestCase):
         record.write_to(f, gzip=True)
         f.seek(0)
         g = gzip.GzipFile(fileobj=f, mode='rb')
-        self.assertEqual(g.read(), b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Record-ID: <urn:uuid:00000000-0000-0000-0000-000000000000>\r\nWARC-Date: 2013-11-15T00:00:00Z\r\nWARC-Target-URI: http://example.org/\r\nContent-Type: application/http;msgtype=request\r\nContent-Length: 27\r\n\r\nShmuke, I gam four snayglob\r\n\r\n')
+        self.assertEqual(g.read(), self.RESPONSE_RECORD_2)
         g.close()
         f.close()
 
