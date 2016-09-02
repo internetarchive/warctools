@@ -6,14 +6,10 @@ python:
  - 3.3
  - 3.4
  - 3.5
+ - 3.5-dev
  - nightly
  - pypy
  - pypy3
-
-matrix:
- allow_failures:
-  - python: 3.5
-  - python: nightly
 
 script: python setup.py test
 
