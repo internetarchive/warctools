@@ -6,9 +6,9 @@ warctools
 
 dependencies
 
-	- setuptools
-	- unittest2
-	- python 2.7, 3.2+
+- setuptools
+- unittest2
+- python 2.7, 3.2+
 
 hanzo warc tools:
 
@@ -77,11 +77,11 @@ notes:
 
 things left to do (in no order):
 
-    - lots more testing.
-    - supporting pre 1.0 warc files
-    - add more documentation
-    - support more commandline options for output and filenames
-    - s3 urls
+- lots more testing.
+- supporting pre 1.0 warc files
+- add more documentation
+- support more commandline options for output and filenames
+- s3 urls
 
 
 -- tef thomas.figg@hanzoarchives.com
