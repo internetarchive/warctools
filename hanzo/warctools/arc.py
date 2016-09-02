@@ -68,7 +68,6 @@ def rx(pat):
 nl_rx = rx('^\r\n|\r|\n$')
 length_rx = rx(b'^' + ArcRecord.CONTENT_LENGTH + b'$') #pylint: disable-msg=E1101
 type_rx = rx(b'^' + ArcRecord.CONTENT_TYPE + b'$')     #pylint: disable-msg=E1101
-SPLIT = re.compile(br'\b\s|\s\b').split
 
 class ArcParser(ArchiveParser):
     """A parser for arc archives."""
@@ -115,16 +114,21 @@ class ArcParser(ArchiveParser):
             # configure parser instance
             self.version = arc_version.split()[0]
             self.headers = arc_names_line.strip().split()
-            
+
+            # raj: some v1 ARC files are incorrectly sending a v2 header names line
+            if arc_names_line == 'URL IP-address Archive-date Content-type Result-code Checksum Location Offset Filepath Archive-length\n':
+                if arc_version == '1 0 InternetArchive' and 5 == len(line.split(' ')):
+                    self.headers = ['URL', 'IP-address', 'Archive-date', 'Content-type', 'Archive-length']
+
             # now we have read header field in record body
             # we can extract the headers from the current record,
             # and read the length field
 
             # which is in a different place with v1 and v2
-        
-            # read headers 
+
+            # read headers
             arc_headers = self.parse_header_list(line)
-            
+
             # extract content, ignoring header lines parsed already
             content_type, content_length, errors = \
                 self.get_content_headers(arc_headers)
@@ -139,7 +143,11 @@ class ArcParser(ArchiveParser):
                                      raw_headers=raw_headers)
         else:
             if not self.headers:
-                raise Exception('missing filedesc')
+                #raj: some arc files are missing the filedesc:// line
+                #raise Exception('missing filedesc')
+                self.version = '1'
+                self.headers = ['URL', 'IP-address', 'Archive-date', 'Content-type', 'Archive-length']
+
             headers = self.parse_header_list(line)
             content_type, content_length, errors = \
                 self.get_content_headers(headers)
@@ -157,21 +165,32 @@ class ArcParser(ArchiveParser):
         return ()
 
     def parse_header_list(self, line):
-        # some people use ' ' as the empty value. lovely.
-        line = line.rstrip(b'\r\n')
-        values = SPLIT(line)
-        if len(self.headers) != len(values):
-            if self.headers[0] in (ArcRecord.URL, ArcRecord.CONTENT_TYPE):
-                # fencepost
-                values = [s[::-1] for s in reversed(SPLIT(line[::-1], len(self.headers)-1))]
-            else:
-                values = SPLIT(line, len(self.headers)-1)
+        values = line.strip().split(b' ')
+        num_values = len(values)
 
-        if len(self.headers) != len(values):
-            raise Exception('missing headers %s %s'%(",".join(values), ",".join(self.headers)))
-                
-        return list(zip(self.headers, values))
+        #raj: some headers contain urls with unescaped spaces
+        if num_values > 5:
+            if re.match(b'^(?:\d{1,3}\.){3}\d{1,3}$', values[-4]) and re.match('^\d{14}$', values[-3]) and re.match('^\d+$', values[-1]):
+                values = [b'%20'.join(values[0:-4]), values[-4], values[-3], values[-2], values[-1]]
+                num_values = len(values)
 
+        if 4 == num_values:
+            #raj: alexa arc files don't always have content-type in header
+            return list(zip(self.short_headers, values))
+        elif 5 == num_values:
+            #normal case
+            #raj: some old alexa arcs have ip-address and date transposed in the header
+            if re.match(b'^\d{14}$', values[1]) and re.match(b'^(?:\d{1,3}\.){3}\d{1,3}$', values[2]):
+                values[1], values[2] = values[2], values[1]
+
+            return list(zip(self.headers, values))
+        elif 6 == num_values:
+            #raj: some old alexa arcs have "content-type; charset" in the header
+            v = values[0:4]+values[5:]
+            v[3] = v[3].rstrip(';')
+            return list(zip(self.headers, v))
+        else:
+            raise Exception('invalid number of header fields')
 
     @staticmethod
     def get_content_headers(headers):
@@ -195,3 +214,8 @@ class ArcParser(ArchiveParser):
 
 
 register_record_type(re.compile(br'^filedesc://'), ArcRecord)
+
+#raj: some arc files are missing the filedesc:// line
+url_record_regex = re.compile('^https?://\S+ (?:\d{1,3}\.){3}\d{1,3} \d{14} \S+ \d+$')
+register_record_type(url_record_regex, ArcRecord)
+

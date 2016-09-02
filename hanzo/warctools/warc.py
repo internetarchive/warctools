@@ -48,6 +48,9 @@ class WarcRecord(ArchiveRecord):
 
     PROFILE_IDENTICAL_PAYLOAD_DIGEST = b"http://netpreserve.org/warc/1.0/revisit/identical-payload-digest"
 
+    HTTP_REQUEST_CONTENT_TYPE = b"application/http;msgtype=request"
+    HTTP_RESPONSE_CONTENT_TYPE = b"application/http;msgtype=response"
+
     TRAILER = b'\r\n\r\n'
 
     def __init__(self, version=VERSION, headers=None, content=None,
@@ -59,10 +62,10 @@ class WarcRecord(ArchiveRecord):
         content, which is a tuple (content_type, content_buffer), is provided,
         when writing the warc record, any Content-Type and Content-Length that
         appear in the supplied headers are ignored, and the values content[0]
-        and len(content[1]), respectively, are used. 
+        and len(content[1]), respectively, are used.
 
-        When reading, the caller can stream content_file or use content, which is
-        lazily filled using content_file, and after which content_file is
+        When reading, the caller can stream content_file or use content, which
+        is lazily filled using content_file, and after which content_file is
         unavailable.
         """
         ArchiveRecord.__init__(self, headers, content, errors)

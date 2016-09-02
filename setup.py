@@ -4,14 +4,14 @@ import os
 from setuptools import setup
 
 setup(name='warctools',
-    version="4.10.1dev2",
+    version="5.0.dev2",
     license="MIT License",
-    description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
+    description='Command line tools and libraries for handling and manipulating WARC files',
     author='Thomas Figg',
     author_email='tef@warctools.twentygototen.org',
-    packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
-    test_suite="nose.collector",
-    tests_require=["nose"],
+    packages=['hanzo', 'hanzo.warctools'],
+    tests_require=['pytest>=3.0'],
+    setup_requires=['pytest-runner'],
     entry_points="""
         [console_scripts]
         warcdump=hanzo.warcdump:run
