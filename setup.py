@@ -4,7 +4,7 @@ import os
 from setuptools import setup
 
 setup(name='warctools',
-    version="4.10.1dev2",
+    version="4.10.1.dev2",
     license="MIT License",
     description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
     author='Thomas Figg',
