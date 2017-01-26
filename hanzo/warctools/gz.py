@@ -111,7 +111,12 @@ class MultiMemberGzipReader(object):
                 self._dbuf = self._dbuf[end:]
                 return res
 
-            self._dbuf += self._decompressor.decompress(self._cbuf.next_chunk())
+            tmp_cbuf = self._cbuf.next_chunk()
+            if tmp_cbuf == b'':
+                raise EOFError(
+                        'Compressed file ended before the end-of-stream '
+                        'marker was reached')
+            self._dbuf += self._decompressor.decompress(tmp_cbuf)
             if self._decompressor.unused_data != b'':
                 self._cbuf.rewind(len(self._decompressor.unused_data))
                 self._skip_eof()

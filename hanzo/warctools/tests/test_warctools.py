@@ -570,17 +570,30 @@ class MultiMemberGzipTest(unittest.TestCase):
     # def test_invalid_gzip(self):
     #     # XXX
     #     # test crc mismatch
-    #     # test end of stream in middle of
-    #     #  - magic
-    #     #  - various parts of gzip header
-    #     #  - data
-    #     #  - gzip footer
     #     # test invalid
     #     #  - magic
     #     #  - gzip header
     #     #  - data
     #     #  - gzip footer
-    #     pass
+
+    # test end of stream in middle of
+    #  - magic
+    #  - various parts of gzip header
+    #  - data
+    #  - gzip footer
+    def test_incomplete_gzip(self):
+        for l in range(1, len(self.GZ_8BYTE)):
+            with BytesIO(self.GZ_8BYTE[:l]) as f:
+                with MultiMemberGzipReader(f) as g:
+                    with self.assertRaises(Exception):
+                        for m in g:
+                            buf = m.read()
+
+        # sanity check of the full gzip
+        with BytesIO(self.GZ_8BYTE) as f:
+            with MultiMemberGzipReader(f) as g:
+                for m in g:
+                    self.assertEqual(b'abcdefgh', m.read())
 
     # def test_bad_behavior(self):
     #     # XXX
