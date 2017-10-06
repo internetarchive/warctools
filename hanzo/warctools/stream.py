@@ -125,12 +125,18 @@ class GzipRecordStream(RecordStream):
 
             return offset, record, errors
 
+        while True:
+            offset_ = self.fh.tell()
+            self.gz = GzipRecordFile(self.fh)
+            record, r_errors, tmp_offset = self.record_parser.parse(self.gz, offset=None)
+            next_offset_ = self.fh.tell()
+            if record or next_offset_ == offset_:
+                break
+            # If we reach here (inside the loop), record is None and
+            # next_offset_ != offset_. This means we are looking at a gzip
+            # member which decompresses to the empty file. We skip it and parse
+            # the next record.
 
-        offset_ = self.fh.tell()
-        self.gz = GzipRecordFile(self.fh)
-        record, r_errors, tmp_offset = self.record_parser.parse(self.gz, offset=None)
-
-        next_offset_ = self.fh.tell()
         next_record, next_errors, tmp_next_offset = self.record_parser.parse(self.gz, offset=None)
 
         if not next_record:
