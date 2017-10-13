@@ -63,22 +63,22 @@ class RecordStream(object):
         or record is none and errors is a list"""
 
         nrecords = 0
+        offset = -1
         while nrecords < limit or limit is None:
-            offset, record, errors = self._read_record(offsets)
-            nrecords+=1
-            yield (offset, record,errors)
-            if not record:
+            last_offset = offset
+            offset, record, errors = self._read_record(offsets=True)
+            if offset == last_offset:
                 break
+            if record:
+                nrecords += 1
+            yield (offset, record, errors)
 
     def __iter__(self):
-        while True:
-            offset, record, errors = self._read_record(offsets=False)
-            if record:
-                yield record
-            elif errors:
+        for (offset, record, errors) in self.read_records(limit=None):
+            if errors:
                 raise StandardError('Errors while decoding '+",".join(errors))
             else:
-                break
+                yield record
 
     def _read_record(self, offsets):
         """overridden by sub-classes to read individual records"""
