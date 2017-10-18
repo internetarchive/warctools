@@ -71,7 +71,7 @@ class RecordStream(object):
                 break
             if record:
                 nrecords += 1
-            yield (offset, record, errors)
+            yield (offset if offsets else None, record, errors)
 
     def __iter__(self):
         for (offset, record, errors) in self.read_records(limit=None):
