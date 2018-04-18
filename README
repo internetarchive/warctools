@@ -7,7 +7,7 @@ hanzo warc tools:
 
     warcvalid.py
         returns 0 if the arguments are all valid arc/warc files
-        non zero on error 
+        non zero on error
 
     warcdump.py - writes human readable summary of warcfiles:
         usage: python warcdump.py foo.warc foo.warc.gz
@@ -16,27 +16,31 @@ hanzo warc tools:
 
         assumes uncompressed warc on stdin if no args
 
-    warcfilter.py 
+    warcfilter.py
         python warcfilter.py pattern file file file
             searches all headers for regex pattern
         use -i to invert search
         use -U to constrain to url
         use -T to constrain to record type
         use -C to constrain to content-type
-            
+
         autodetects and stdin like warcdump
 
         prints out a warc format by default.
 
     warc2warc.py:
-        python warc2warc <input files>
+        python warc2warc [options] <input files>
 
-        autodetects compression on file
-        args, assumes uncompressed stdin if none
+        autodetects compression on file args,
+				assumes uncompressed stdin if none
 
         use -Z to write compressed output
 
-        i.e warc2warc -Z input > input.gz
+        i.e. warc2warc -Z input
+
+				use -o to specify output file
+
+				i.e. warc2warc input -o /path/to/output
 
         should ignore buggy records in input
 
@@ -52,7 +56,7 @@ hanzo warc tools:
 warccrap/mywarc.warc 1196018 request /images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd1255a8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=request 193
 warccrap/mywarc.warc 1196631 response http://www.hanzoarchives.com/images/slides/hanzo_markm__wwwoh.pdf <urn:uuid:fd2614f8-d07c-11df-b125-12313b0a18c6> application/http;msgtype=response 3279474
         not great, but a start
-                
+
 notes:
 
     arc2warc uses the conversion rules from the earlier arc2warc.c

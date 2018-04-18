@@ -11,6 +11,7 @@ from optparse import OptionParser
 from .warctools import WarcRecord, expand_files
 from .httptools import RequestMessage, ResponseMessage
 
+# TODO: The optparse module is deprecated. Maybe use argparse?
 parser = OptionParser(usage="%prog [options] url (url ...)")
 
 parser.add_option("-o", "--output", dest="output",
@@ -73,24 +74,30 @@ def main(argv):
         # output file is not specified,
         # therefore write to stdout
         try:
-            # python3
+            # Python 3
             out = sys.stdout.buffer
         except AttributeError:
-            # python2
+            # Python 2
             out = sys.stdout
     else:
-        # create path to output file if necessary
+        # output file is specified, therefore make
+        # sure that it exists correspondingly
         output_file = options.output
         output_directory = os.path.dirname(options.output)
         if output_directory != "":
-            os.makedirs(output_directory, exist_ok=True)
+            try:
+                # Python 3
+                os.makedirs(output_directory, exist_ok=True)
+            except TypeError:
+                # Python 2
+                if not os.path.exists(output_directory):
+                    os.makedirs(output_directory)
         # open output file
         output_descriptor = open(output_file, "wb")
         out = output_descriptor
 
     if len(input_files) < 1:
         fh = WarcRecord.open_archive(file_handle=sys.stdin, gzip=None)
-
         for record in fh:
             process(record, out, options)
     else:
