@@ -1,17 +1,22 @@
 #!/usr/bin/env python
 
-import os
+'''
+internetarchive/warctools setup
+'''
+
 from setuptools import setup
 
-setup(name='warctools',
-    version="4.10.1.dev2",
-    license="MIT License",
-    description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
+setup(
     author='Thomas Figg',
     author_email='tef@warctools.twentygototen.org',
-    packages=['hanzo', 'hanzo.warctools','hanzo.httptools'],
-    test_suite="nose.collector",
-    tests_require=["nose"],
+    classifiers=[
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.5',
+        'Topic :: System :: Archiving',
+    ],
+    description='Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)',
     entry_points="""
         [console_scripts]
         warcdump=hanzo.warcdump:run
@@ -24,4 +29,11 @@ setup(name='warctools',
         warc2warc=hanzo.warc2warc:run
         warcpayload=hanzo.warcpayload:run
     """,
-    )
+    maintainer='Internet Archive',
+    maintainer_email='info@archive.org',
+    name='warctools',
+    packages=['hanzo', 'hanzo.warctools', 'hanzo.httptools'],
+    test_suite="nose.collector",
+    tests_require=["nose"],
+    version='4.10.1.dev2',
+)
