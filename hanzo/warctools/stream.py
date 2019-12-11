@@ -5,47 +5,54 @@ import re
 
 from hanzo.warctools.archive_detect import is_gzip_file, guess_record_type
 
+from . import s3
+from .geezip import GeeZipFile
+
+CHUNK_SIZE = 8192  # the size to read in, make this bigger things go faster.
+
+
 def open_record_stream(record_class=None, filename=None, file_handle=None,
-                       mode="rb", gzip="auto", offset=None, length=None):
+                       mode="rb", _gzip="auto", offset=None, length=None):
     """Can take a filename or a file_handle. Normally called
     indirectly from A record class i.e WarcRecord.open_archive. If the
     first parameter is None, will try to guess"""
 
     if file_handle is None:
         if filename.startswith('s3://'):
-            from . import s3
             file_handle = s3.open_url(filename, offset=offset, length=length)
         else:
             file_handle = open(filename, mode=mode)
             if offset is not None:
                 file_handle.seek(offset)
 
-    if record_class == None:
+    if record_class is None:
         record_class = guess_record_type(file_handle)
 
-    if record_class == None:
+    if record_class is None:
         raise Exception('Failed to guess compression')
 
     record_parser = record_class.make_parser()
 
-    if gzip == 'auto':
-        if (filename and filename.endswith('.gz')) or is_gzip_file(file_handle):
-            gzip = 'record'
-            #debug('autodetect: record gzip')
+    if _gzip == 'auto':
+        if ((filename and filename.endswith('.gz'))
+                or is_gzip_file(file_handle)):
+            _gzip = 'record'
+            # debug('autodetect: record gzip')
         else:
             # assume uncompressed file
-            #debug('autodetected: uncompressed file')
-            gzip = None
+            # debug('autodetected: uncompressed file')
+            _gzip = None
 
-    if gzip == 'record':
+    if _gzip == 'record':
         return GzipRecordStream(file_handle, record_parser)
-    elif gzip == 'file':
+
+    if _gzip == 'file':
         return GzipFileStream(file_handle, record_parser)
-    else:
-        return RecordStream(file_handle, record_parser)
+
+    return RecordStream(file_handle, record_parser)
 
 
-class RecordStream(object):
+class RecordStream():
     """A readable/writable stream of Archive Records. Can be iterated over
     or read_records can give more control, and potentially offset information.
     """
@@ -98,7 +105,9 @@ class RecordStream(object):
             if not re.match(br'^[\r\n]+$', line):
                 break
 
-        record, errors, offset = self.record_parser.parse(self, offset, line)
+        record, errors, offset = self.record_parser.parse(
+            self, offset, line)
+
         return offset, record, errors
 
     def write(self, record):
@@ -117,7 +126,8 @@ class RecordStream(object):
             read_size = min(CHUNK_SIZE, self.bytes_to_eoc)
             buf = self._read(read_size)
             if len(buf) < read_size:
-                raise Exception('expected {} bytes but only read {}'.format(read_size, len(buf)))
+                raise Exception('expected {} bytes but only read {}'.format(
+                    read_size, len(buf)))
 
     def _read(self, count=None):
         """Raw read, will read into next record if caller isn't careful"""
@@ -178,36 +188,14 @@ class RecordStream(object):
             self.bytes_to_eoc -= len(result)
         return result
 
-CHUNK_SIZE = 8192 # the size to read in, make this bigger things go faster.
-
-class GeeZipFile(gzip.GzipFile):
-    """Extends gzip.GzipFile to remember self.member_offset, the raw file
-    offset of the current gzip member."""
-
-    def __init__(self, filename=None, mode=None,
-                 compresslevel=9, fileobj=None, mtime=None):
-        # ignore mtime for python 2.6
-        gzip.GzipFile.__init__(self, filename=filename, mode=mode, compresslevel=compresslevel, fileobj=fileobj)
-        self.member_offset = None
-
-    # hook in to the place we seem to be able to reliably get the raw gzip
-    # member offset
-    def _read(self, size=1024):
-        if self._new_member:
-            try:
-                # works for python3.2
-                self.member_offset = self.fileobj.tell() - self.fileobj._length + (self.fileobj._read or 0)
-            except AttributeError:
-                # works for python2.7
-                self.member_offset = self.fileobj.tell()
-
-        return gzip.GzipFile._read(self, size)
 
 class GzipRecordStream(RecordStream):
     """A stream to read/write concatted file made up of gzipped
     archive records"""
+
     def __init__(self, file_handle, record_parser):
-        RecordStream.__init__(self, GeeZipFile(fileobj=file_handle), record_parser)
+        RecordStream.__init__(self, GeeZipFile(fileobj=file_handle),
+                              record_parser)
         self.raw_fh = file_handle
 
     def _read_record(self, offsets):
@@ -221,8 +209,8 @@ class GzipRecordStream(RecordStream):
             if not re.match(br'^[\r\n]+$', line):
                 break
 
-        record, errors, _offset = \
-            self.record_parser.parse(self, offset=None, line=line)
+        record, errors, _offset = self.record_parser.parse(
+            self, offset=None, line=line)
 
         offset = self.fh.member_offset
 
@@ -231,8 +219,10 @@ class GzipRecordStream(RecordStream):
     def seek(self, offset, pos=0):
         """Same as a seek on a file"""
         self.raw_fh.seek(offset, pos)
-        # trick to avoid closing and recreating GzipFile, does it always work?
+        # XXX trick to avoid closing and recreating GzipFile, does it
+        # always work?
         self.fh._new_member = True
+
 
 class GzipFileStream(RecordStream):
     """A stream to read/write gzipped file made up of all archive records"""
@@ -251,8 +241,7 @@ class GzipFileStream(RecordStream):
             if not re.match(br'^[\r\n]+$', line):
                 break
 
-        record, errors, _offset = \
-            self.record_parser.parse(self, offset=None, line=line)
+        record, errors, offset = self.record_parser.parse(
+            self, offset=None, line=line)
 
         return offset, record, errors
-
