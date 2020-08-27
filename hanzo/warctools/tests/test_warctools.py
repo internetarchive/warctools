@@ -1,23 +1,11 @@
 # vim: set sw=4 et:
 
-import unittest
-
-# want unittest2 for python2.6
-try:
-    unittest.TestCase.assertIsNone
-except AttributeError:
-    import unittest2
-    unittest = unittest2
-
-import tempfile
 import gzip
+import tempfile
+import unittest
+from io import BytesIO
 from hanzo import warctools, httptools
 
-try:
-    from io import BytesIO
-except ImportError:
-    from StringIO import StringIO
-    BytesIO = StringIO
 
 class ArcRecordTerminatorTest(unittest.TestCase):
     REC1_CONTENT = (b'1 0 InternetArchive\n'
@@ -63,7 +51,7 @@ class ArcRecordTerminatorTest(unittest.TestCase):
             i = 0
             for (offset, record, errors) in fh.read_records(limit=None, offsets=True):
                 if i == 0:
-                    self.assertEqual(offset, 0)
+                    self.assertEqual(offset or 0, 0)
                     self.assertEqual(type(record), warctools.arc.ArcRecordHeader)
                     self.assertEqual(record.type, b'filedesc')
                     self.assertEqual(record.content_type, b'text/plain')
