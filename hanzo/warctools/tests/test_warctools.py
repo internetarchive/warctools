@@ -154,7 +154,7 @@ class WarcRecordTerminatorTest(unittest.TestCase):
             i = 0
             for (offset, record, errors) in fh.read_records(limit=None, offsets=True):
                 if i == 0:
-                    self.assertEqual(offset, 0)
+                    self.assertEqual(offset or 0, 0)
                     self.assertEqual(type(record), warctools.warc.WarcRecord)
                     self.assertEqual(record.type, b'warcinfo')
                     self.assertEqual(record.content_type, b'application/warc-fields')
