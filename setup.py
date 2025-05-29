@@ -12,7 +12,6 @@ setup(
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Topic :: System :: Archiving',
     ],
@@ -35,5 +34,5 @@ setup(
     packages=['hanzo', 'hanzo.warctools', 'hanzo.httptools'],
     test_suite="nose.collector",
     tests_require=["nose"],
-    version='4.10.1.dev2',
+    version='4.11.0',
 )
