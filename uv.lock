@@ -1,0 +1,27 @@
+version = 1
+revision = 2
+requires-python = ">=3.5"
+
+[[package]]
+name = "nose"
+version = "1.3.7"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/a5/0dc93c3ec33f4e281849523a5a913fa1eea9a3068acfa754d44d88107a44/nose-1.3.7.tar.gz", hash = "sha256:f1bffef9cbc82628f6e7d7b40d7e255aefaa1adb6a1b1d26c69a8b79e6208a98", size = 280488, upload-time = "2015-06-02T09:12:32.961Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/d8/dd071918c040f50fa1cf80da16423af51ff8ce4a0f2399b7bf8de45ac3d9/nose-1.3.7-py3-none-any.whl", hash = "sha256:9ff7c6cc443f8c51994b34a667bbcf45afd6d945be7477b52e97516fd17c53ac", size = 154731, upload-time = "2015-06-02T09:12:40.57Z" },
+]
+
+[[package]]
+name = "warctools"
+version = "5.0.0"
+source = { editable = "." }
+
+[package.dev-dependencies]
+dev = [
+    { name = "nose" },
+]
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [{ name = "nose" }]
