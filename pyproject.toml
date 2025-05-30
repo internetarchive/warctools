@@ -1,0 +1,39 @@
+[project]
+name = "warctools"
+version = "5.0.0"
+authors = [
+  { name="Thomas Figg", email="tef@warctools.twentygototen.org" },
+]
+maintainers = [
+  { name="Internet Archive", email="info@archive.org" },
+]
+description = "Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)"
+readme = "README.md"
+requires-python = ">=3.5"
+classifiers = [
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.5",
+  "Topic :: System :: Archiving",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.scripts]
+warcdump = "hanzo.warcdump:run"
+arc2warc = "hanzo.arc2warc:run"
+warcextract = "hanzo.warcextract:run"
+warcfilter = "hanzo.warcfilter:run"
+warcindex = "hanzo.warcindex:run"
+warclinks = "hanzo.warclinks:run"
+warcvalid = "hanzo.warcvalid:run"
+warc2warc = "hanzo.warc2warc:run"
+warcpayload = "hanzo.warcpayload:run"
+
+[dependency-groups]
+dev = [
+  "nose",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
