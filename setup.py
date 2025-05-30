@@ -34,5 +34,5 @@ setup(
     packages=['hanzo', 'hanzo.warctools', 'hanzo.httptools'],
     test_suite="nose.collector",
     tests_require=["nose"],
-    version='4.11.0',
+    version='5.0.0',
 )
