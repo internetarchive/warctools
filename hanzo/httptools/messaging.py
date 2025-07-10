@@ -505,7 +505,7 @@ class HTTPHeader(object):
             return self.content_length
 
 url_rx = re.compile(
-    b'(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\d+))?)'
+    b'(?P<scheme>https?)://(?P<authority>(?P<host>[^:/]+)(?::(?P<port>\\d+))?)'
     b'(?P<path>.*)',
     re.I)
 
