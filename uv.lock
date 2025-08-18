@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.5"
 
 [[package]]
@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "warctools"
-version = "5.0.0"
+version = "5.0.1"
 source = { editable = "." }
 
 [package.dev-dependencies]
