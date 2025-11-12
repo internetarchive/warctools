@@ -1,6 +1,6 @@
 [project]
 name = "warctools"
-version = "5.0.1"
+version = "6.0.0"
 authors = [
   { name="Thomas Figg", email="tef@warctools.twentygototen.org" },
 ]
@@ -9,14 +9,26 @@ maintainers = [
 ]
 description = "Command line tools and libraries for handling and manipulating WARC files (and HTTP contents)"
 readme = "README.md"
-requires-python = ">=3.5"
+requires-python = ">=3.10"
 classifiers = [
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3.5",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: System :: Archiving",
 ]
-license = "MIT"
-license-files = ["LICENSE"]
+license = { text = "MIT" }
+dependencies = [
+  "click>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0.0",
+  "ruff>=0.1.0",
+  "mypy>=1.0.0",
+]
 
 [project.scripts]
 warcdump = "hanzo.warcdump:run"
@@ -25,15 +37,52 @@ warcextract = "hanzo.warcextract:run"
 warcfilter = "hanzo.warcfilter:run"
 warcindex = "hanzo.warcindex:run"
 warclinks = "hanzo.warclinks:run"
+warcunpack = "hanzo.warcunpack:run"
 warcvalid = "hanzo.warcvalid:run"
 warc2warc = "hanzo.warc2warc:run"
 warcpayload = "hanzo.warcpayload:run"
 
-[dependency-groups]
-dev = [
-  "nose",
-]
+[tool.uv_build]
+packages = ["hanzo", "warctools"]
 
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "F",  # pyflakes
+  "I",  # isort
+  "N",  # pep8-naming
+  "UP", # pyupgrade
+  "B",  # flake8-bugbear
+  "C4", # flake8-comprehensions
+]
+ignore = [
+  "E501",  # line too long (handled by formatter)
+  "UP007", # Optional[X] vs X | None - keeping Optional for Python 3.10 compatibility
+  "E402",  # Module level import not at top (needed for src/warctools/__init__.py re-export pattern)
+  "N802",  # Function name should be lowercase (unittest.TestCase.runTest is required by framework)
+  "B017",  # Do not assert blind exception (intentional in tests to catch any exception)
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true

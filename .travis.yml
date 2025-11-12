@@ -1,19 +1,28 @@
 language: python
 
 python:
- - 2.7
- - 3.2
- - 3.3
- - 3.4
- - 3.5
- - nightly
- - pypy
- - pypy3
+  - "3.10"
+  - "3.11"
+  - "3.12"
+  - "3.13"
 
-matrix:
- allow_failures:
-  - python: 3.5
-  - python: nightly
+# Install uv for fast Python package management
+before_install:
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="$HOME/.cargo/bin:$PATH"
 
-script: python setup.py test
+install:
+  - uv sync --dev
+
+script:
+  # Linting
+  - uv run ruff check .
+  - uv run ruff format --check .
+  # Testing
+  - uv run pytest
+  # Build
+  - uv build
+
+notifications:
+  email: false
 
