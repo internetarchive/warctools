@@ -8,7 +8,7 @@ import os.path
 import logging
 
 from urllib.parse import urlparse, urlunparse
-from html.parser import HTMLParser, HTMLParseError
+from html.parser import HTMLParser
 from optparse import OptionParser
 from contextlib import closing
 
@@ -103,7 +103,7 @@ except ImportError:
             html.close()
             for link in html.get_abs_links():
                 yield link
-        except HTMLParseError as ex:
+        except Exception:
             logging.warning("html parse error")
 
 
