@@ -42,9 +42,9 @@ def parse_http_response(record):
 
     header = message.header
 
-    mime_type = [v for k,v in header.headers if k.lower() =='content-type']
+    mime_type = [v for k,v in header.headers if k.lower() == b'content-type']
     if mime_type:
-        mime_type = mime_type[0].split(';')[0]
+        mime_type = mime_type[0].split(b';')[0].decode('latin-1')
     else:
         mime_type = None
 
@@ -57,12 +57,13 @@ def extract_links_from_warcfh(fh):
             try:
                 content_type, content = record.content
 
-                if record.type == WarcRecord.RESPONSE and content_type.startswith('application/http'):
+                if record.type == WarcRecord.RESPONSE and content_type.startswith(b'application/http'):
 
                     code, mime_type, message = parse_http_response(record)
 
-                    if 200 <= code < 300 and mime_type.find('html') > -1: 
-                        for link in extract_links_from_html(record.url, message.get_body()):
+                    if 200 <= code < 300 and mime_type and mime_type.find('html') > -1:
+                        url = record.url.decode('utf-8', 'replace')
+                        for link in extract_links_from_html(url, message.get_body()):
                             yield ("".join(c for c in link if c not in '\n\r\t'))
 
 
@@ -85,8 +86,6 @@ try:
             html.make_links_absolute(base)
 
             for element, attribute, link, pos in html.iterlinks():
-                if isinstance(link, str):
-                    link = link.encode('utf-8', 'ignore')
                 yield link
 
         except Exception:
@@ -99,6 +98,8 @@ except ImportError:
     def extract_links_from_html(base, body):
         try:
             html = LinkParser(base)
+            if isinstance(body, bytes):
+                body = body.decode('utf-8', 'replace')
             html.feed(body)
             html.close()
             for link in html.get_abs_links():
